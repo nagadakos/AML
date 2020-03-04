@@ -1,13 +1,19 @@
 import gzip
 import csv
 import numpy as np
+import torch
 
 class DataLoader:
-    def __init__(self):
+    def __init__(self, type= 'word-features'):
         data_path = '../data/letter.data.gz'
         lines = self._read(data_path)
-        data, target = self._parse(lines)
-        self.data, self.target = self._pad(data, target)
+        if type == 'word-features':
+            data, target = self._parse(lines)
+            #self.data, self.target = self._parse(lines)
+            self.data, self.target = self._pad(data, target)
+        else:
+            #print(lines[0:20])
+            self.data, self.target = self._letter_parse(lines)
 
     @staticmethod
     def _read(filepath):
@@ -34,6 +40,26 @@ class DataLoader:
             data[-1].append(pixels)
             target[-1].append(line[1])
         return data, target
+    
+    @staticmethod
+    def _letter_parse(lines):
+        lines = sorted(lines, key=lambda x: int(x[0]))
+        data, target = [], []
+        data = np.zeros((len(lines),16,8))
+        next_ = None
+
+        for i,line in enumerate(lines):
+            pixels = np.array([int(x) for x in line[6:134]])
+            pixels = pixels.reshape((16, 8))
+            data[i] = pixels
+            target.append(line[1])
+        # One-hot encode targets.
+        target1Hot = np.zeros((len(target),26))
+        for index, letter in enumerate(target):
+            if letter:
+                target1Hot[index][ord(letter) - ord('a')] = 1
+        return data, target1Hot
+
 
     @staticmethod
     def _pad(data, target):
@@ -46,19 +72,35 @@ class DataLoader:
         target = [x + ([''] * (max_length - len(x))) for x in target]
         return np.array(data), np.array(target)
 
-def get_dataset():
-    dataset = DataLoader()
+def get_dataset(type = 'word-features', convToTensor = False):
+    
+    if type == 'word-features':
+        dataset = DataLoader(type=type)
 
-    # Flatten images into vectors.
-    dataset.data = dataset.data.reshape(dataset.data.shape[:2] + (-1,))
+        print(dataset.data[0].shape)
+        # Flatten images into vectors.
+        #dataset.data = dataset.data.reshape(dataset.data.shape[:2] + (-1,))
+        dataset.data = dataset.data.reshape(dataset.data.shape[:2] + (-1,))
 
-     # One-hot encode targets.
-    target = np.zeros(dataset.target.shape + (26,))
-    for index, letter in np.ndenumerate(dataset.target):
-        if letter:
-            target[index][ord(letter) - ord('a')] = 1
-    dataset.target = target
+         # One-hot encode targets.
+        target = np.zeros(dataset.target.shape + (26,))
+        for index, letter in np.ndenumerate(dataset.target):
+            if letter:
+                target[index][ord(letter) - ord('a')] = 1
+        dataset.target = target
 
+        
+    else:
+        print("Loading Dataset as Letter-features for Deepnet comparison.\n")
+        dataset = DataLoader(type=type)
+    if convToTensor:
+        # Convert dataset into torch tensors
+        dataset.data = torch.tensor(dataset.data).float().reshape(dataset.data.shape[0],1,dataset.data.shape[1], dataset.data.shape[2])
+        dataset.target = torch.tensor(dataset.target).long()
+        # Convert dataset into torch tensors
+        #train = data_utils.TensorDataset(torch.tensor(train_data).float(), torch.tensor(train_target).long())
+        #test = data_utils.TensorDataset(torch.tensor(test_data).float(), torch.tensor(test_target).long())
+        
     # Shuffle order of examples.
     order = np.random.permutation(len(dataset.data))
     dataset.data = dataset.data[order]
