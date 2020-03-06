@@ -61,15 +61,26 @@ class Conv(nn.module):
 
         result = torch.zeros((result_batch_size, num_filters, result_rows, result_cols))
 
+        # for k in range(result_batch_size):
+        #     for c in range(num_filters):
+        #         for i in range(0, result_rows):
+        #             for j in range(0, result_cols):
+        #                 result[k, c, i, j] = torch.sum(input[k,
+        #                                                :,
+        #                                                row_stride * i: row_stride * i + kernel_size,
+        #                                                col_stride * j: col_stride * j + kernel_size]
+        #                                                * kernel[c, :, :])
+        # removed the out_channels / num_filters below.
         for k in range(result_batch_size):
-            for c in range(num_filters):
-                for i in range(0, result_rows):
-                    for j in range(0, result_cols):
-                        result[k, c, i, j] = torch.sum(input[k,
-                                                       :,
-                                                       row_stride * i: row_stride * i + kernel_size,
-                                                       col_stride * j: col_stride * j + kernel_size]
-                                                       * kernel[c, :, :])
+            for i in range(0, result_rows):
+                for j in range(0, result_cols):
+                    result[k, :, i, j] = torch.sum(input[k,
+                                                   :,
+                                                   row_stride * i: row_stride * i + kernel_size,
+                                                   col_stride * j: col_stride * j + kernel_size]
+                                                   * kernel[:, :, :],
+                                                   (-1, -2))
+
         return result
 
     # def backward(self):
