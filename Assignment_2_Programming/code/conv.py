@@ -15,7 +15,7 @@ class Conv(nn.module):
         assert self.num_filters >= 1
 
         self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size))
-
+        self.bias = torch.rand(self.num_filters)
         # set padding variable
         self.padding = padding
 
@@ -79,7 +79,7 @@ class Conv(nn.module):
                                                    row_stride * i: row_stride * i + kernel_size,
                                                    col_stride * j: col_stride * j + kernel_size]
                                                    * kernel[:, :, :],
-                                                   (-1, -2))
+                                                   (-1, -2)) + self.bias
 
         return result
 
