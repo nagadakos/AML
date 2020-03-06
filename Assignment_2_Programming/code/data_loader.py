@@ -45,20 +45,21 @@ class DataLoader:
     def _letter_parse(lines):
         lines = sorted(lines, key=lambda x: int(x[0]))
         data, target = [], []
-        data = np.zeros((len(lines),16,8))
+        data   = np.zeros((len(lines),16,8))
+        target = np.zeros((len(lines),1))
         next_ = None
 
         for i,line in enumerate(lines):
             pixels = np.array([int(x) for x in line[6:134]])
             pixels = pixels.reshape((16, 8))
             data[i] = pixels
-            target.append(line[1])
+            target[i] = ord(line[1]) - ord('a')
         # One-hot encode targets.
-        target1Hot = np.zeros((len(target),26))
-        for index, letter in enumerate(target):
-            if letter:
-                target1Hot[index][ord(letter) - ord('a')] = 1
-        return data, target1Hot
+        #target1Hot = np.zeros((len(target),26))
+        #for index, letter in enumerate(target):
+        #    if letter:
+        #        target1Hot[index][ord(letter) - ord('a')] = 1
+        return data, target
 
 
     @staticmethod
@@ -93,13 +94,11 @@ def get_dataset(type = 'word-features', convToTensor = False):
     else:
         print("Loading Dataset as Letter-features for Deepnet comparison.\n")
         dataset = DataLoader(type=type)
+        dataset.data = np.reshape(dataset.data,(dataset.data.shape[0],1,dataset.data.shape[1], dataset.data.shape[2]))
     if convToTensor:
         # Convert dataset into torch tensors
-        dataset.data = torch.tensor(dataset.data).float().reshape(dataset.data.shape[0],1,dataset.data.shape[1], dataset.data.shape[2])
+        dataset.data = torch.tensor(dataset.data).float()
         dataset.target = torch.tensor(dataset.target).long()
-        # Convert dataset into torch tensors
-        #train = data_utils.TensorDataset(torch.tensor(train_data).float(), torch.tensor(train_target).long())
-        #test = data_utils.TensorDataset(torch.tensor(test_data).float(), torch.tensor(test_target).long())
         
     # Shuffle order of examples.
     order = np.random.permutation(len(dataset.data))

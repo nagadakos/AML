@@ -32,7 +32,7 @@ def load_data(bSize = 32):
     # elements is a one-hot endoding of the label of the letter so: numOfLetter / word x 26. Zero padding has been used to keep word size
     # consistent to 14 letters per word. The labels for the padding rows are all 0s.
     # ******************
-    dataset = get_dataset(type='letter-features', convToTensor = True)
+    dataset = get_dataset(type='letter-features', convToTensor = False)
     #dataset = get_dataset(type='word-features')
     split = int(0.5 * len(dataset.data)) # train-test split
     train_data, test_data = dataset.data[:split], dataset.data[split:]
@@ -69,7 +69,78 @@ def load_data(bSize = 32):
     #print(train[0][1].shape)
 
     return trainLoader, testLoader
+#----------------------------------------------------------------------------------------------
+def comp_pool_dimensions(layerType,height, width, kSize, depth = 0, padding=0, dilation=1, stride=1,retType = 'list'):
+    dims = int(''.join(filter(str.isdigit, str(layerType))))
 
+    if type(padding) is not (list and tuple):
+        padding = [padding, padding]
+    if type(dilation) is not (list and tuple):
+        dilation = [dilation, dilation]
+    if type(kSize) is not (list and tuple):
+        kSize = [kSize, kSize]
+    if type(stride) is not (list and tuple):
+        stride = [stride, stride]
+
+
+   
+    heightOut = int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1)
+    widthOut  = int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+    if dims == 3:
+        depthOut  = int(((depth + 2*padding[0] - dilation[2] * (kSize[0]-1)-1) / stride[0]) +1)
+        heightOut = int(((height+ 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+        widthOut  = int(((width + 2*padding[2] - dilation[2] * (kSize[2]-1)-1) / stride[2]) +1)
+
+    if retType == 'list':
+        return [heightOut, widthOut] if dims != 3 else [depth,height, width]
+    else:
+        return  dict(height=heightOut, width = widthOut) if dims != 3 else dict(depth=depthOut, height=heightOut, width = widthOut)
+# --------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
+def comp_conv_dimensions(layerType, height, width, kSize, depth = 0, padding=0, dilation=1, stride=1, outputPadding = 0,retType = 'list'):
+    ''' DESCRIPTION: This function computes the out dimensions of any convolutional or transpose convolutional
+                     pytorch layer. It returns a list or dict of the computed output dimensions of size 1 for
+                     1D conv, size 2 for 2D and 3 for 3D.
+        ARGUMENTS: layerType-> (type) type of this layer.
+                   Rest of args: (int or list,tuple): Input to this layer in this order: height,width, kernel
+                   size of layer. If the given inputs are not list, tuple the scalars are repeated to form the
+                   required holder.
+                   Rest of keword args: Similarly to args. These are usually set to the default values, hence
+                   the keyword format.
+    '''
+    dims = int(''.join(filter(str.isdigit, str(layerType))))
+
+    if type(padding) is not (list and tuple):
+        padding = [padding, padding]
+    if type(dilation) is not (list and tuple):
+        dilation = [dilation, dilation]
+    if type(kSize) is not (list and tuple):
+        kSize = [kSize, kSize]
+    if type(stride) is not (list and tuple):
+        stride = [stride, stride]
+    if type(outputPadding) is not (list and tuple):
+        outputPadding = [outputPadding, outputPadding]
+
+
+    if 'Transpose' in str(layerType):
+        heightOut = int( (height-1) * stride[0]  - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1)
+        widthOut  = int( (width -1) * stride[1]  - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1)
+        if dims == 3:
+            depthOut  = int( (depth -1) * stride[0] - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1)
+            heightOut = int( (height-1) * stride[1] - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1)
+            widthOut  = int( (width -1) * stride[2] - 2*padding[2] + dilation[2] * (kSize[2]-1) + outputPadding[2] +1)
+    else:
+        heightOut = int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1)
+        widthOut  = int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+        if dims == 3:
+            depthOut  = int(((depth + 2*padding[0] - dilation[2] * (kSize[0]-1)-1) / stride[0]) +1)
+            heightOut = int(((height+ 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+            widthOut  = int(((width + 2*padding[2] - dilation[2] * (kSize[2]-1)-1) / stride[2]) +1)
+
+    if retType == 'list':
+        return [heightOut, widthOut] if dims != 3 else [depth,height, width]
+    else:
+        return  dict(height=heightOut, width = widthOut) if dims != 3 else dict(depth=depthOut, height=heightOut, width = widthOut)
 # --------------------------------------------------------------------------------------------------------
 
 # Model Definition
@@ -79,18 +150,28 @@ class Net(nn.Module):
     accuracy = 0
     trainLoss= 0
     testLoss = 0
+    history = [[],[],[]]
+    
     # Mod init + boiler plate code
     # Skeleton of this network; the blocks to be used.
     # Similar to Fischer prize building blocks!
-    def __init__(self):
+    def __init__(self, dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 } }):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=3)
-        # Output here is of 24x24 dimnesions
+        self.conv1 = nn.Conv2d(1, dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'])
+        # Compute dims after 1nd conv layer
+        h1, w1 = comp_conv_dimensions('2d', 16,8, dims['conv1']['kSize'], stride = dims['conv1']['stride'])
+        # Compute dims after 1nd max layer
+        h2, w2 = comp_pool_dimensions('2d', 16,8, dims['conv1']['kSize'], stride = dims['conv1']['stride'])
         self.conv2 = nn.Conv2d(10, 20, kernel_size=3)
-        # output of conv2 is of 20x20
+        # Compute dims after 2nd  layer
+        h3, w3 = comp_conv_dimensions('2d', h2,w2, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
+        # Compute dims after 2nd max layer
+        h4, w4 = comp_conv_dimensions('2d', h3,w3, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
         self.drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        print(dims['conv2']['nodes'] * h4*w4)
+        #self.fc1 = nn.Linear(dims['conv2']['nodes'] * h4*w4, 50)
+        self.fc1 = nn.Linear(160, 50)
+        self.fc2 = nn.Linear(50, 26)
 
     # ------------------
 
@@ -113,15 +194,19 @@ class Net(nn.Module):
 
     def forward_no_drop(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x), (2,1)))
-        print(x.shape)
+        #print(x.shape)
         x = F.relu(F.max_pool2d(self.conv2(x), (2,1)))
-        print(x.shape)
-        x = x.view(-1, )
+        #print(x.shape)
+        x = x.view(-1, 160)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         x = F.log_softmax(x, dim=1)
         return x
-
+    # ------------------
+    def predict(self, x):
+        x = self.forward_no_drop(x)
+        x = torch.argmax(x, dim = 1)
+        return x
     # ------------------
 
     # Call this function to facilitate the traiing process
@@ -139,8 +224,8 @@ class Net(nn.Module):
             # forward pass calculate output of model
             output      = self.forward_no_drop(data)
             # compute loss
-            loss        = F.nll_loss(output, label)
-            # loss        = F.CrossEntropyLoss(output, target)
+            #loss        = F.cross_entropy(output, label.squeeze())
+            loss        = F.nll_loss(output, label.squeeze())
 
             # Backpropagation part
             # 1. Zero out Grads
@@ -156,6 +241,7 @@ class Net(nn.Module):
                     print("Epoch: {}->Batch: {} / {}. Loss = {}".format(args, idx, len(indata), loss.item() ))
         # Log the current train loss
         self.trainLoss = loss   
+        self.history[0].append(loss)
     # -----------------------
 
     # Testing and error reports are done here
@@ -172,11 +258,12 @@ class Net(nn.Module):
                 # output = self.forward(data)
                 output = self.forward_no_drop(data)
                 # Sum all loss terms and tern then into a numpy number for late use.
-                loss  += F.nll_loss(output, label, reduction = 'sum').item()
+                #loss  += F.nll_loss(output, label, reduction = 'sum').item()
+                loss  += F.cross_entropy(output, label.squeeze(), reduction = 'sum').item()
                 # Find the max along a row but maitain the original dimenions.
                 # in this case  a 10 -dimensional array.
                 pred   = output.max(dim = 1, keepdim = True)
-                # Select the indexes of the prediction maxes.
+                # Select the indexes of the prediction maxes(max[1]).
                 # Reshape the output vector in the same form of the label one, so they 
                 # can be compared directly; from batchsize x 10 to batchsize. Compare
                 # predictions with label;  1 indicates equality. Sum the correct ones
@@ -187,7 +274,9 @@ class Net(nn.Module):
                 true  += label.eq(pred[1].view_as(label)).sum().item()
         acc = true/len(testLoader.dataset)
         self.accuracy = acc
-        self.testLoss = loss 
+        self.testLoss = loss
+        self.history[1].append(loss)
+        self.history[2].append(acc)
         # Print accuracy report!
         print("Accuracy: {} ({} / {})".format(acc, true,
                                               len(testLoader.dataset)))
@@ -199,6 +288,15 @@ class Net(nn.Module):
         print("Training Loss: {}" .format(self.trainLoss))
         print("Test Loss:     {}" .format(self.testLoss))
 
+    def plot(figType = 'acc'):
+        fig = plt.figure()
+        plt.title('Test Accuracy vs Epoch')
+        plt.xlabel('Epochs')
+        plt.xlabel('Accuracy')
+        yAxis = np.arange(len(self.history[2]))+1
+        plt.plot(self.history[2], yAxis)
+        return fig
+        
 # --------------------------------------------------------------------------------------------------------
 
 def parse_args():
@@ -214,7 +312,8 @@ def parse_args():
     parser.add_argument('--bSize', type = int,  metavar = 'bSize',default=32,     help="Batch size of data loader, in terms of samples. a size of 32 means 32 images for an optimization step.")
     parser.add_argument('--epochs',type = int,  metavar = 'e',    default=12   ,  help="Number of training epochs. One epoch is to perform an optimization step over every sample, once.")
     # Parse the input from the console. To access a specific arg-> dim = args.dim
-    args = parser.parse_args()
+    #args = parser.parse_args()
+    args, unknown = parser.parse_known_args() 
     lr, m, bSize, epochs = args.lr, args.m, args.bSize, args.epochs
     # Sanitize input
     m = m if (m>0 and m <1) else 0 
@@ -245,6 +344,7 @@ def main():
 
     # Final report
     model.report()
+    return model
 
 # Define behavior if this module is the main executable. Standard code.
 if __name__ == '__main__':
