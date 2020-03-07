@@ -313,8 +313,7 @@ class Net(nn.Module):
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             xAxis = np.arange(len(self.history[2]))+1
-            plt.plot(xAxis, self.history[2], marker = 'o', label="Training Loss")
-            plt.plot(xAxis, self.history[0], marker = 'o')
+            plt.plot(xAxis, self.history[2], marker = 'o')
             if saveFile is not None:
                 plt.savefig(saveFile)
             return fig
@@ -325,8 +324,9 @@ class Net(nn.Module):
             plt.xlabel('Epochs')
             plt.ylabel('Loss')
             xAxis = np.arange(len(self.history[2]))+1
-            plt.plot(xAxis, self.history[2], marker = 'o', label="Training Loss")
-            plt.plot(xAxis, self.history[0], marker = 'o', label = 'Test Loss')
+            plt.plot(xAxis, self.history[0], marker = 'o', label="Training Loss")
+            plt.plot(xAxis, self.history[1], marker = 'o', label = 'Test Loss')
+            plt.legend()
             if saveFile is not None:
                 plt.savefig(saveFile)
             return fig
