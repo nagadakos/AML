@@ -152,10 +152,11 @@ class Net(nn.Module):
     testLoss = 0
     history = [[],[],[]]
     
+    
     # Mod init + boiler plate code
     # Skeleton of this network; the blocks to be used.
     # Similar to Fischer prize building blocks!
-    def __init__(self, dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 } }):
+    def __init__(self, device = device, dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 } }):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'])
         # Compute dims after 1nd conv layer
@@ -172,6 +173,7 @@ class Net(nn.Module):
         #self.fc1 = nn.Linear(dims['conv2']['nodes'] * h4*w4, 50)
         self.fc1 = nn.Linear(160, 50)
         self.fc2 = nn.Linear(50, 26)
+        self.device = device
 
     # ------------------
 
@@ -203,9 +205,9 @@ class Net(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
     # ------------------
-    def predict(self, x):
+    def get_predictions(self, x):
         x = self.forward_no_drop(x)
-        x = torch.argmax(x, dim = 1)
+        x = torch.max(x, dim = 1)[1]
         return x
     # ------------------
 
@@ -225,7 +227,9 @@ class Net(nn.Module):
             output      = self.forward_no_drop(data)
             # compute loss
             #loss        = F.cross_entropy(output, label.squeeze())
-            loss        = F.nll_loss(output, label.squeeze())
+            if label.shape[0] > 1:
+                label = label.squeeze()
+            loss = F.nll_loss(output, label)
 
             # Backpropagation part
             # 1. Zero out Grads
@@ -237,7 +241,7 @@ class Net(nn.Module):
 
            # Training Progress report for sanity purposes! 
             if verbose:
-                if idx % 20 == 0: 
+                if idx % 200 == 0: 
                     print("Epoch: {}->Batch: {} / {}. Loss = {}".format(args, idx, len(indata), loss.item() ))
         # Log the current train loss
         self.trainLoss = loss   
@@ -275,12 +279,26 @@ class Net(nn.Module):
         acc = true/len(testLoader.dataset)
         self.accuracy = acc
         self.testLoss = loss
-        self.history[1].append(loss)
+        self.history[1].append(loss/len(testLoader.dataset))
         self.history[2].append(acc)
         # Print accuracy report!
         print("Accuracy: {} ({} / {})".format(acc, true,
                                               len(testLoader.dataset)))
 
+        # Testing and error reports are done here
+    def predict(self, device, testLoader):
+        print("In  Function!")        
+        loss = 0 
+        true = 0
+        acc  = 0
+        # Inform Pytorch that keeping track of gradients is not required in
+        # testing phase.
+        with torch.no_grad():
+            for data, label in testLoader:
+                data, label = data.to(device), label.to(device)
+                output = self.get_redicitons(data)
+                
+        
     def report(self):
 
         print("Current stats of MNIST_NET:")
@@ -288,14 +306,57 @@ class Net(nn.Module):
         print("Training Loss: {}" .format(self.trainLoss))
         print("Test Loss:     {}" .format(self.testLoss))
 
-    def plot(figType = 'acc'):
-        fig = plt.figure()
-        plt.title('Test Accuracy vs Epoch')
-        plt.xlabel('Epochs')
-        plt.xlabel('Accuracy')
-        yAxis = np.arange(len(self.history[2]))+1
-        plt.plot(self.history[2], yAxis)
-        return fig
+    def plot(self,figType = 'acc', saveFile = None):
+        if figType == 'acc':
+            fig = plt.figure()
+            plt.title('Test Accuracy vs Epoch')
+            plt.xlabel('Epochs')
+            plt.ylabel('Accuracy')
+            xAxis = np.arange(len(self.history[2]))+1
+            plt.plot(xAxis, self.history[2], marker = 'o', label="Training Loss")
+            plt.plot(xAxis, self.history[0], marker = 'o')
+            if saveFile is not None:
+                plt.savefig(saveFile)
+            return fig
+
+        if figType == 'lrCurve':
+            fig = plt.figure()
+            plt.title('Learning Curves')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            xAxis = np.arange(len(self.history[2]))+1
+            plt.plot(xAxis, self.history[2], marker = 'o', label="Training Loss")
+            plt.plot(xAxis, self.history[0], marker = 'o', label = 'Test Loss')
+            if saveFile is not None:
+                plt.savefig(saveFile)
+            return fig
+    
+    def evaluate(self, dataLoaders, kwArgs = {'lr':0.001, 'm':0.9, 'bSize':32, 'epochs':12}):
+        """ DESCRIPTION: THis function will fit and test on hte given dataloader and the given kwargs.
+                         It stores training and testing information in the model class variables, along
+                         with learned weights.
+            ARGUMENTS: dataLoaders (list of dataloaders) : Tensor dataloader objects for train and test
+                       kwArgs (dict): dicitionary holding the training and testing parameters
+        """
+        
+        # Get args
+        lr, m , bSize, epochs = kwArgs['lr'], kwArgs['m'], kwArgs['bSize'], kwArgs['epochs']
+        dev = self.device
+        # Load data, initialize model and optimizer!
+        trainLoader, testLoader = dataLoaders[0], dataLoaders[1]
+        optim = optm.SGD(self.parameters(), lr=lr, momentum=m)
+
+        print("######### Initiating Network Training and Testing #########\n")
+        print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
+        print("Procedure carried on device: {}\n".format(dev))
+        for e in range(epochs):
+            print("Epoch: {} start ------------\n".format(e))
+            args = e
+            self.train(args, dev, trainLoader, optim)
+            self.test(dev, testLoader)
+
+        # Final report
+        self.report()
         
 # --------------------------------------------------------------------------------------------------------
 
@@ -329,7 +390,7 @@ def main():
     # Get keyboard arguments, if any! (Try the dictionary approach in the code aboe for some practice!)
     lr, m , bSize, epochs = parse_args()
     # Load data, initialize model and optimizer!
-    trainLoader, testLoader = load_data(bSize=bSize)
+    trainLoader, testLoader, _ = load_data(bSize=bSize)
     model = Net().to(device)
     optim = optm.SGD(model.parameters(), lr=lr, momentum=m)
 
