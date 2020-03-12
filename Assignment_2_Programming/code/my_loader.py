@@ -11,10 +11,8 @@ class DataLoader:
         self.wordIdxs = 0
         if dType == 'word-features':
             data, target = self._parse(lines)
-            #self.data, self.target = self._parse(lines)
             self.data, self.target = self._pad(data, target)
         else:
-            #print(lines[0:20])
             self.data, self.target = self._parse2(lines)
             #self.data, self.target, self.wordIdxs = self._letter_parse(lines)
 
@@ -28,6 +26,8 @@ class DataLoader:
 
     @staticmethod
     def _parse(lines):
+        """ DESCRIPTION: Load data for word-wise purposes.
+        """
         #lines = sorted(lines, key=lambda x: int(x[0]))
         data, target = [], []
         next_ = None
@@ -45,7 +45,8 @@ class DataLoader:
     
     @staticmethod
     def _parse2(lines):
-        #lines = sorted(lines, key=lambda x: int(x[0]))
+        """ DESCRIPTION: Load data for letter-wise purposes.
+        """
         data, target, wordIdxs = [], [], []
         next_ = None
         i = 0
@@ -84,16 +85,6 @@ class DataLoader:
         #    if letter:
         #        target1Hot[index][ord(letter) - ord('a')] = 1
         return data, target, letterIdxs
-    
-    @staticmethod
-    def _get_word_idxs(lines):
-        lines = sorted(lines, key=lambda x: int(x[0]))
-        idxs   = np.zeros((len(lines),1))
-        
-        print(len(lines), len(lines[0]))
-
-        #for i,line in enumerate(lines):
-        return idxs
     
     @staticmethod
     def _pad(data, target):
@@ -137,9 +128,7 @@ def load_data(bSize = 32, dType = 'word-features', split = 0.5):
     split = int(split * len(dataset.data)) # train-test split
     train_data, test_data = dataset.data[:split], dataset.data[split:]
     train_target, test_target = dataset.target[:split], dataset.target[split:]
-    for i in range(len(train_data)):
-        if len(train_data[i]) == 0:
-            print(i)
+    
     if dType == 'letter-features':
         #trainWordIdxs, testWordIdxs = dataset.wordIdxs[:split], dataset.wordIdxs[split:]
         train_data, train_target, trainWordLimits = words_to_letters(train_data, train_target)
