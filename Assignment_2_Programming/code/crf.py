@@ -2,15 +2,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 from conv import Conv
+from crf_layer import CRF_Layer
 
+class CRF_NET(nn.Module):
 
-class CRF(nn.Module):
-
-    def __init__(self, input_dim, embed_dim, conv_layers, num_labels, batch_size, m=14):
+    def __init__(self, input_dim, embed_dim = 1, kernel_size=2, num_labels=26, batch_size=32, m=14, stride = (1,1), padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
-        super(CRF, self).__init__()
+        super(CRF_NET, self).__init__()
         
         # crf param
         self.input_dim = input_dim
@@ -22,12 +22,11 @@ class CRF(nn.Module):
         
         # conv layer params
         self.out_channels = 1 # output channel of conv layer
-        self.conv_layers = conv_layers
-        self.stride = (1,1)
-        self.padding = True
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
         self.cout_shape = self.get_cout_dim() # output shape of conv layer
         self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
-        
         
         
         self.init_params()
@@ -36,19 +35,26 @@ class CRF(nn.Module):
         if self.use_cuda:
             [m.cuda() for m in self.modules()]
 
+    # ------------------------------------------------------------------------------------------
+    
     def init_params(self):
         """
         Initialize trainable parameters of CRF here
         """
-        self.conv = Conv(self.conv_layers[0][-1], self.out_channels, padding=self.padding,stride=self.stride)
+        self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
         self.W = torch.randn(self.num_labels, self.cout_numel, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
+        self.crf = CRF_Layer(self.W, self.T)
+        
+    # ------------------------------------------------------------------------------------------
     
     def get_cout_dim(self):
         if self.padding:
             return (int(np.ceil(self.input_dim[0]/self.stride[0])), int(np.ceil(int(self.input_dim[1]/self.stride[1]))))
         return None
     
+    
+    # ------------------------------------------------------------------------------------------
     
     # X: (batch_size, 14, 16, 8) dimensional tensor
     # iterates over all words in a batch, and decodes them one by one
@@ -57,6 +63,24 @@ class CRF(nn.Module):
         Implement the objective of CRF here.
         The input (features) to the CRF module should be convolution features.
         """        
+        for i in range(self.batch_size):
+            # Reshape the word to (14,1,16,8)
+            word = X[i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
+            # conv operation performed for one word independently to every letter
+            features = self.get_conv_features(word)
+            print(features.shape)
+            # now decode the sequence using conv features
+            grads = self.crf.forward(features)
+
+        return grads
+    
+    # ------------------------------------------------------------------------------------------
+    
+    # input: x: (m, d), m is # of letters a word has, d is the feature dimension of letter image
+    # input: w: (26, d), letter weight vector
+    # input: T: (26, 26), letter-letter transition matrix
+    # output: letter_indices: (m, 1), letter labels of a word
+    def predict(self, x):
         decods = torch.zeros(self.batch_size, self.m, 1, dtype=torch.int)
         for i in range(self.batch_size):
             # Reshape the word to (14,1,16,8)
@@ -64,15 +88,13 @@ class CRF(nn.Module):
             # conv operation performed for one word independently to every letter
             features = self.get_conv_features(word)
             # now decode the sequence using conv features
-            decods[i] = self.dp_infer(features)
+            #decods[i] = self.dp_infer(features)
+            decods[i] = self.crf.predict(features)
 
         return decods
     
-    # input: x: (m, d), m is # of letters a word has, d is the feature dimension of letter image
-    # input: w: (26, d), letter weight vector
-    # input: T: (26, 26), letter-letter transition matrix
-    # output: letter_indices: (m, 1), letter labels of a word
-            
+    # ------------------------------------------------------------------------------------------
+    
     # decode a sequence of letters for one word
     def dp_infer(self, x):
         w = self.W
@@ -116,28 +138,21 @@ class CRF(nn.Module):
             letter_indicies[pos, 0] = pos_best_prevletter_table[pos+1, letter_indicies[pos+1, 0]]
         return letter_indicies
 
-
+    # ------------------------------------------------------------------------------------------
+    
     def loss(self, X, labels):
         
         
         """
         Compute the negative conditional log-likelihood of a labelling given a sequence.
         """
-        features = self.get_conv_features(X)
-        loss = blah
+        #features = self.get_conv_features(X)
+        loss = self.crf.get_loss()
         return loss
 
-    def backward(self):
-        
-        
-        """
-        Return the gradient of the CRF layer
-        :return:
-        """
-        gradient = blah
-        return gradient
-
-
+    
+    # ------------------------------------------------------------------------------------------
+    
     # performs conv operation to every (16,8) image in the word. m = 14 (default) - word length
     # returns flattened vector of new conv features
     def get_conv_features(self, word):
@@ -148,9 +163,16 @@ class CRF(nn.Module):
         cout = cout.reshape(cout.shape[0], self.cout_numel)
         return cout
 
+# ========================================================================================
+# MAIN
+# ========================================================================================
 
+def main():
 
-
+    model = CRF_NET((16,8))
+    
+if __name__ == "__main__":
+    main()
 
 
 

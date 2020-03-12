@@ -17,6 +17,7 @@ import numpy as np
 from scipy.optimize import check_grad, minimize
 import torch
 import torch.nn as nn
+from torch.nn.parameter import Parameter
 
 K = 26
 imgSize = 128
@@ -58,13 +59,17 @@ def readParameter(filePath):
 
 class CRF_Layer(nn.Module):
     
-    def __init__(self, W, T, inSize = 128, labelSize= 26):
+    def __init__(self, W, T, inSize = 128, labelSize= 26, C =1, m = 14):
+        super(CRF_Layer, self).__init__()
         self.use_cuda = torch.cuda.is_available()
-        self.w = W
-        self.t = T
+        self.w = Parameter(W)
+        self.t = Parameter(T)
         self.imgSize = inSize
+        self.objValue = 0
+        self.gradients = 0
         self.K = labelSize
-       
+        self.C = C
+        self.m = m 
     # -------------------------------------------------------------
       
     def computeAllDotProduct(self,w, word):
@@ -161,14 +166,31 @@ class CRF_Layer(nn.Module):
 
         return res
     
-    def get__obj(self, word, C):
-        dots = self.computeAllDotProduct(w, word)
-        alpha, beta = self.computeDP(word, w, T, dots)
-        p1, p2 = self.computeMarginal(word, w, T, alpha, beta, dots)
+    # -------------------------------------------------------------
+    
+    def compute_pdfs(self, words):
+        dots = self.computeAllDotProduct(w, words[0])
+        alpha, beta = self.computeDP(words[0], w, T, dots)
+        p1, p2 = self.computeMarginal(words[0], w, T, alpha, beta, dots)
+        logPYX = self.logPYX(word, w, T, alpha, dots)
+                                         
+        self.p1 = torch.zeros(len(words), p1.shape)
+        self.p2 = torch.zeros(len(words), p2.shape)
+        self.logPYX = torch.zeros(len(words), logPYX.shape)
+                                         
+        for i, word in enumerate(words):
+            dots = self.computeAllDotProduct(self.w, word)
+            alpha, beta = self.computeDP(word, self.w, self.T, dots)
+            self.p1[i], self.p2[i] = self.computeMarginal(word, self.w, self.T, alpha, beta, dots)
+            self.logPYX[i] = self.logPYX(word, self.w, self.T, alpha, dots)
         
+    # -------------------------------------------------------------
+    
+    def forward(self, dataset):
+        """ DESCRIPTION: (old backward). THis function will compute all the marginals and gradients for each
+                         barch. The grads are stored in the class.
+        """
         
-    def backward(self, dataset, C):
-
         w = self.w
         T = self.t
         
@@ -199,76 +221,77 @@ class CRF_Layer(nn.Module):
         #meandw += w
         #meandT += T
 
-        gradients = torch.cat((meandw.flatten(), meandT.flatten()))
+        self.gradients = torch.cat((meandw.flatten(), meandT.flatten()))
 
-        self.objValue = -C * meanLogPYX + 0.5 * torch.sum(w ** 2) + 0.5 * torch.sum(T ** 2)
+        self.objValue = -self.C * meanLogPYX + 0.5 * torch.sum(w ** 2) + 0.5 * torch.sum(T ** 2)
+
+        return self.gradients
+    
+    # -------------------------------------------------------------
+    
+    def compute_obj():
+        self.objValue = -C * self.logPYX + 0.5 * torch.sum(self.w ** 2) + 0.5 * torch.sum(self.T ** 2)
+        return self.objValue
+    
+    # -------------------------------------------------------------
+    
+    def backward(self):
+
+        gradients = self.gradients
 
         return gradients
     
     # -------------------------------------------------------------
     
-    def backwardi_new(self, x, C):
-
+    def predict(self, inX):
+        # decode a sequence of letters for one word
         w = self.w
         T = self.t
-        
-        dots = self.computeAllDotProduct(w, x)
-        alpha, beta = self.computeDP(x, w, T, dots)
-        p1, p2 = self.computeMarginal(x, w, T, alpha, beta, dots)
+        #m = self.m
+        ret = torch.zeros(len(inX), len(inX[0][0]))
+        for j, (label,word) in enumerate(inX):
+            x = word
+            m = word.shape[0]
+            
+            pos_letter_value_table = torch.zeros((m, self.K), dtype=torch.float64)
+            pos_best_prevletter_table = torch.zeros((m, self.K), dtype=torch.int)
+            # for the position 1 (1st letter), special handling
+            # because only w and x dot product is covered and transition is not considered.
+            for i in range(self.K):
+            # print(w)
+            # print(x)
+                pos_letter_value_table[0, i] = torch.dot(w[i, :], x[0, :])
 
-        dw = self.computeGradientWy(x, p1)
-        dT = self.computeGradientTij(x, p2)
+            # pos_best_prevletter_table first row is all zero as there is no previous letter for the first letter
 
-        gradients = torch.cat((meandw.flatten(), meandT.flatten()))
+            # start from 2nd position
+            for pos in range(1, m):
+            # go over all possible letters
+                for letter_ind in range(self.K):
+                    # get the previous letter scores
+                    prev_letter_scores = pos_letter_value_table[pos-1, :].clone()
+                    # we need to calculate scores of combining the current letter and all previous letters
+                    # no need to calculate the dot product because dot product only covers current letter and position
+                        # which means it is independent of all previous letters
+                    for prev_letter_ind in range(self.K):
+                        prev_letter_scores[prev_letter_ind] += T[prev_letter_ind, letter_ind]
 
-        self.objValue = -C * self.logPYX + 0.5 * torch.sum(w ** 2) + 0.5 * torch.sum(T ** 2)
-
-        return gradients
-    
-    # -------------------------------------------------------------
-    
-    def forward(self, x):
-        # decode a sequence of letters for one word
-        w = self.W
-        T = self.T
-        m = self.m
-    
-        pos_letter_value_table = torch.zeros((m, self.K), dtype=torch.float64)
-        pos_best_prevletter_table = torch.zeros((m, self.K), dtype=torch.int)
-        # for the position 1 (1st letter), special handling
-        # because only w and x dot product is covered and transition is not considered.
-        for i in range(self.K):
-        # print(w)
-        # print(x)
-            pos_letter_value_table[0, i] = torch.dot(w[i, :], x[0, :])
-        
-        # pos_best_prevletter_table first row is all zero as there is no previous letter for the first letter
-        
-        # start from 2nd position
-        for pos in range(1, m):
-        # go over all possible letters
-            for letter_ind in range(self.num_labels):
-                # get the previous letter scores
-                prev_letter_scores = pos_letter_value_table[pos-1, :].clone()
-                # we need to calculate scores of combining the current letter and all previous letters
-                # no need to calculate the dot product because dot product only covers current letter and position
-        	        # which means it is independent of all previous letters
-                for prev_letter_ind in range(self.num_labels):
-                    prev_letter_scores[prev_letter_ind] += T[prev_letter_ind, letter_ind]
-        
-                # find out which previous letter achieved the largest score by now
-                best_letter_ind = torch.argmax(prev_letter_scores)
-                # update the score of current positive with current letter
-                pos_letter_value_table[pos, letter_ind] = prev_letter_scores[best_letter_ind] + torch.dot(w[letter_ind,:], x[pos, :])
-                # save the best previous letter for following tracking to generate most possible word
-                pos_best_prevletter_table[pos, letter_ind] = best_letter_ind
-        letter_indicies = torch.zeros((m, 1), dtype=torch.int)
-        letter_indicies[m-1, 0] = torch.argmax(pos_letter_value_table[m-1, :])
-        max_obj_val = pos_letter_value_table[m-1, letter_indicies[m-1, 0]]
-        # print(max_obj_val)
-        for pos in range(m-2, -1, -1):
-            letter_indicies[pos, 0] = pos_best_prevletter_table[pos+1, letter_indicies[pos+1, 0]]
-        return letter_indicies
+                    # find out which previous letter achieved the largest score by now
+                    best_letter_ind = torch.argmax(prev_letter_scores)
+                    # update the score of current positive torch.dot(w[letter_ind,:], x[pos, :])with current letter
+                    term = torch.dot(w[letter_ind,:], x[pos, :])
+                    pos_letter_value_table[pos, letter_ind] = prev_letter_scores[best_letter_ind] + term
+                    # save the best previous letter for following tracking to generate most possible word
+                    pos_best_prevletter_table[pos, letter_ind] = best_letter_ind
+            letter_indicies = torch.zeros((m, 1), dtype=torch.int)
+            letter_indicies[m-1, 0] = torch.argmax(pos_letter_value_table[m-1, :])
+            max_obj_val = pos_letter_value_table[m-1, letter_indicies[m-1, 0]]
+            # print(max_obj_val)
+            for pos in range(m-2, -1, -1):
+                letter_indicies[pos, 0] = pos_best_prevletter_table[pos+1, letter_indicies[pos+1, 0]]
+            ret[j,:] = letter_indicies.flatten() 
+        #self.compute_grads(inX, self.C)
+        return ret
     
     # -------------------------------------------------------------
     
@@ -305,16 +328,20 @@ def main():
     meandT = torch.zeros((K, K))
     meanLogPYX = 0
     crfL = CRF_Layer(w,T, labelSize = K, inSize= imgSize)
-    
+    i = 0
     for word in trainSet:
 
         C = 1
-        grad = crfL.backward([word], C)
+        pred = crfL.forward([word])
+        grad = crfL.backward([word])
         dw = grad[:K*imgSize].reshape(K,imgSize)
         dT = grad[K*imgSize:].reshape(K,K)
 
         meandw += dw
         meandT += dT
+        i +=1
+        if i % 500 == 0:
+            print("Finished up to word "+str(i))
     meandw /= len(trainSet)
     meandT /= len(trainSet)
 
