@@ -104,15 +104,15 @@ class Conv(nn.Module):
         #                                                col_stride * j: col_stride * j + kernel_size]
         #                                                * kernel[c, :, :])
         # removed the out_channels / num_filters below.
-        for k in range(result_batch_size):
-            for i in range(0, result_rows):
-                for j in range(0, result_cols):
-                    result[k, :, i, j] = torch.sum(input[k,
-                                                   :,
-                                                   row_stride * i: row_stride * i + kernel_size,
-                                                   col_stride * j: col_stride * j + kernel_size]
-                                                   * kernel[:, :, :],
-                                                   (-1, -2)) + self.bias
+        # for k in range(result_batch_size):
+        for i in range(0, result_rows):
+            for j in range(0, result_cols):
+                result[:, :, i, j] = torch.sum(input[:,
+                                               :,
+                                               row_stride * i: row_stride * i + kernel_size,
+                                               col_stride * j: col_stride * j + kernel_size]
+                                               * kernel[:, :, :],
+                                               (-1, -2)) + self.bias
 
         return result
 
