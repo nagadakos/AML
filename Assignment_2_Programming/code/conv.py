@@ -1,12 +1,13 @@
+
 import torch
 import torch.nn as nn
 
 
-class Conv(nn.module):
+class Conv(nn.Module):
     """
     Convolution layer.
     """
-    def __init__(self, kernel_size, out_channels, padding=False, stride=(1, 1)):
+    def __init__(self, kernel_size, out_channels, padding=False, stride=(1, 1), kernel=None):
         super(Conv, self).__init__()
         # start kernel with random init
         self.kernel_size = kernel_size
@@ -14,8 +15,12 @@ class Conv(nn.module):
         self.num_filters = out_channels
         assert self.num_filters >= 1
 
-        self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size))
         self.bias = torch.rand(self.num_filters)
+        if kernel==None:
+            self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size),  requires_grad=True)
+        else:
+            self.kernel=kernel
+
         # set padding variable
         self.padding = padding
 
@@ -91,7 +96,3 @@ class Conv(nn.module):
         No action needed here.)
         :return:
         """
-
-
-
-
