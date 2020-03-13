@@ -7,7 +7,7 @@ class Conv(nn.Module):
     """
     Convolution layer.
     """
-    def __init__(self, kernel_size, out_channels, padding=False, stride=(1, 1), kernel=None):
+    def __init__(self, kernel_size, out_channels, padding=False, stride=(1, 1)):
         super(Conv, self).__init__()
         # start kernel with random init
         self.kernel_size = kernel_size
@@ -17,10 +17,7 @@ class Conv(nn.Module):
 
         self.bias = torch.rand(self.num_filters, requires_grad=True)
 
-        if kernel == None:
-            self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size),  requires_grad=True)
-        else:
-            self.kernel = kernel
+        self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size),  requires_grad=True)
 
         # set padding variable
         self.padding = padding
