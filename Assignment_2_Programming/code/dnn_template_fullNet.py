@@ -168,11 +168,13 @@ class Net(nn.Module):
         print("Dims conv1 for linear layaer: {} {}".format(h1,w1))
         # Compute dims after 1nd max layer
         h2, w2 = comp_pool_dimensions('2d', h1, w1, dims['pool1']['kSize'], stride = dims['pool1']['stride'])
-        print("Dims conv1 for linear layaer: {} {}".format(h2,w2))
+        print("Dims pool1 for linear layaer: {} {}".format(h2,w2))
         # Compute dims after 2nd  layer
         h3, w3 = comp_conv_dimensions('2d', h2,w2, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
+        print("Dims conv2 for linear layaer: {} {}".format(h3,w3))
         # Compute dims after 2nd max layer
         h4, w4 = comp_pool_dimensions('2d', h3,w3, dims['pool2']['kSize'], stride = dims['pool2']['stride'])
+        print("Dims pool2 for linear layaer: {} {}".format(h4,w4))
         self.linearSize = dims['conv2']['nodes'] * h4*w4
         print("Dims for linear layaer: " + str(self.linearSize))
         # ---|
@@ -408,7 +410,7 @@ def main():
     # Load data, initialize model and optimizer!
     trainLoader, testLoader, _ = load_data(bSize=bSize)
     dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 }, 
-            'pool1':{'stride':(1,1), 'kSize':(2,1)}, 'pool2':{'stride':(1,1), 'kSize':(2,1)} }
+            'pool1':{'stride':(1,1), 'kSize':(3,3)}, 'pool2':{'stride':(1,1), 'kSize':(2,2)} }
     model = Net(dims=dims).to(device)
     optim = optm.SGD(model.parameters(), lr=lr, momentum=m)
 
