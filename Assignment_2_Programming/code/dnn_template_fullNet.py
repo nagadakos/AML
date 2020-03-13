@@ -12,8 +12,9 @@ import PIL
 import numpy as np
 import sys as sys
 from data_loader import get_dataset
+import my_loader
 import torch.utils.data as data_utils
-
+import math
 #  Global Parameters
 # Automatically detect if there is a GPU or just use CPU.
 device  = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -32,31 +33,31 @@ def load_data(bSize = 32):
     # elements is a one-hot endoding of the label of the letter so: numOfLetter / word x 26. Zero padding has been used to keep word size
     # consistent to 14 letters per word. The labels for the padding rows are all 0s.
     # ******************
-    dataset = get_dataset(type='letter-features', convToTensor = False)
+    #dataset = get_dataset(dtype='letter-features', convToTensor = False)
     #dataset = get_dataset(type='word-features')
-    split = int(0.5 * len(dataset.data)) # train-test split
-    train_data, test_data = dataset.data[:split], dataset.data[split:]
-    train_target, test_target = dataset.target[:split], dataset.target[split:]
+    #split = int(0.5 * len(dataset.data)) # train-test split
+    #train_data, test_data = dataset.data[:split], dataset.data[split:]
+    #train_target, test_target = dataset.target[:split], dataset.target[split:]
 
     # Convert dataset into torch tensors
-    train = data_utils.TensorDataset(torch.tensor(train_data).float(), torch.tensor(train_target).long())
-    test = data_utils.TensorDataset(torch.tensor(test_data).float(), torch.tensor(test_target).long())
+    #train = data_utils.TensorDataset(torch.tensor(train_data).float(), torch.tensor(train_target).long())
+    #test = data_utils.TensorDataset(torch.tensor(test_data).float(), torch.tensor(test_target).long())
     # Define train and test loaders
-    trainLoader = data_utils.DataLoader(train,  # dataset to load from
-                                         batch_size=bSize,  # examples per batch (default: 1)
-                                         shuffle=True,
-                                         sampler=None,  # if a sampling method is specified, `shuffle` must be False
-                                         num_workers=5,  # subprocesses to use for sampling
-                                         pin_memory=False,  # whether to return an item pinned to GPU
-                                         )
+    #trainLoader = data_utils.DataLoader(train,  # dataset to load from
+                                         #batch_size=bSize,  # examples per batch (default: 1)
+                                         #shuffle=True,
+                                         #sampler=None,  # if a sampling method is specified, `shuffle` must be False
+                                         #num_workers=5,  # subprocesses to use for sampling
+                                         #pin_memory=False,  # whether to return an item pinned to GPU
+                                         #)
 
-    testLoader = data_utils.DataLoader(test,  # dataset to load from
-                                        batch_size=bSize,  # examples per batch (default: 1)
-                                        shuffle=False,
-                                        sampler=None,  # if a sampling method is specified, `shuffle` must be False
-                                        num_workers=5,  # subprocesses to use for sampling
-                                        pin_memory=False,  # whether to return an item pinned to GPU
-                                        )
+    #testLoader = data_utils.DataLoader(test,  # dataset to load from
+                                        #batch_size=bSize,  # examples per batch (default: 1)
+                                        #shuffle=False,
+                                        #sampler=None,  # if a sampling method is specified, `shuffle` must be False
+                                        #num_workers=5,  # subprocesses to use for sampling
+                                        #pin_memory=False,  # whether to return an item pinned to GPU
+                                        #)
     print('Loaded dataset... ')
     # End of DataLoading -------------------
 
@@ -67,8 +68,9 @@ def load_data(bSize = 32):
     #print(train[0][0].shape)
     #print(train[0][1].shape)
     #print(train[0][1].shape)
-
-    return trainLoader, testLoader
+    
+    trainLoader, testLoader, listReturns= my_loader.load_data(dType = 'letter-features')
+    return trainLoader, testLoader, listReturns
 #----------------------------------------------------------------------------------------------
 def comp_pool_dimensions(layerType,height, width, kSize, depth = 0, padding=0, dilation=1, stride=1,retType = 'list'):
     dims = int(''.join(filter(str.isdigit, str(layerType))))
@@ -84,8 +86,8 @@ def comp_pool_dimensions(layerType,height, width, kSize, depth = 0, padding=0, d
 
 
    
-    heightOut = int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1)
-    widthOut  = int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+    heightOut = math.floor(int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1))
+    widthOut  = math.floor(int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1))
     if dims == 3:
         depthOut  = int(((depth + 2*padding[0] - dilation[2] * (kSize[0]-1)-1) / stride[0]) +1)
         heightOut = int(((height+ 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
@@ -123,19 +125,19 @@ def comp_conv_dimensions(layerType, height, width, kSize, depth = 0, padding=0, 
 
 
     if 'Transpose' in str(layerType):
-        heightOut = int( (height-1) * stride[0]  - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1)
-        widthOut  = int( (width -1) * stride[1]  - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1)
+        heightOut = math.floor(int( (height-1) * stride[0]  - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1))
+        widthOut  = math.floor(int( (width -1) * stride[1]  - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1))
         if dims == 3:
-            depthOut  = int( (depth -1) * stride[0] - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1)
-            heightOut = int( (height-1) * stride[1] - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1)
-            widthOut  = int( (width -1) * stride[2] - 2*padding[2] + dilation[2] * (kSize[2]-1) + outputPadding[2] +1)
+            depthOut  = math.floor(int( (depth -1) * stride[0] - 2*padding[0] + dilation[0] * (kSize[0]-1) + outputPadding[0] +1))
+            heightOut = math.floor(int( (height-1) * stride[1] - 2*padding[1] + dilation[1] * (kSize[1]-1) + outputPadding[1] +1))
+            widthOut  = math.floor(int( (width -1) * stride[2] - 2*padding[2] + dilation[2] * (kSize[2]-1) + outputPadding[2] +1))
     else:
-        heightOut = int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1)
-        widthOut  = int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
+        heightOut = math.floor(int(((height+ 2*padding[0] - dilation[0] * (kSize[0]-1)-1) / stride[0]) +1))
+        widthOut  = math.floor(int(((width + 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1))
         if dims == 3:
-            depthOut  = int(((depth + 2*padding[0] - dilation[2] * (kSize[0]-1)-1) / stride[0]) +1)
-            heightOut = int(((height+ 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1)
-            widthOut  = int(((width + 2*padding[2] - dilation[2] * (kSize[2]-1)-1) / stride[2]) +1)
+            depthOut  = math.floor(int(((depth + 2*padding[0] - dilation[2] * (kSize[0]-1)-1) / stride[0]) +1))
+            heightOut = math.floor(int(((height+ 2*padding[1] - dilation[1] * (kSize[1]-1)-1) / stride[1]) +1))
+            widthOut  = math.floor(int(((width + 2*padding[2] - dilation[2] * (kSize[2]-1)-1) / stride[2]) +1))
 
     if retType == 'list':
         return [heightOut, widthOut] if dims != 3 else [depth,height, width]
@@ -156,23 +158,35 @@ class Net(nn.Module):
     # Mod init + boiler plate code
     # Skeleton of this network; the blocks to be used.
     # Similar to Fischer prize building blocks!
-    def __init__(self, device = device, dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 } }):
+    def __init__(self, device = device, dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 }, 
+                                                'pool1':{'stride':(1,1), 'kSize':(2,1)}, 'pool2':{'stride':(1,1), 'kSize':(2,1)} }):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'])
+        
+        # Layer Dimensions computation
         # Compute dims after 1nd conv layer
         h1, w1 = comp_conv_dimensions('2d', 16,8, dims['conv1']['kSize'], stride = dims['conv1']['stride'])
+        print("Dims conv1 for linear layaer: {} {}".format(h1,w1))
         # Compute dims after 1nd max layer
-        h2, w2 = comp_pool_dimensions('2d', 16,8, dims['conv1']['kSize'], stride = dims['conv1']['stride'])
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=3)
+        h2, w2 = comp_pool_dimensions('2d', h1, w1, dims['pool1']['kSize'], stride = dims['pool1']['stride'])
+        print("Dims conv1 for linear layaer: {} {}".format(h2,w2))
         # Compute dims after 2nd  layer
         h3, w3 = comp_conv_dimensions('2d', h2,w2, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
         # Compute dims after 2nd max layer
-        h4, w4 = comp_conv_dimensions('2d', h3,w3, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
+        h4, w4 = comp_pool_dimensions('2d', h3,w3, dims['pool2']['kSize'], stride = dims['pool2']['stride'])
+        self.linearSize = dims['conv2']['nodes'] * h4*w4
+        print("Dims for linear layaer: " + str(self.linearSize))
+        # ---|
+        
+        # Layers Declaration
+        self.conv1 = nn.Conv2d(1, dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'], stride = dims['conv1']['stride'])
+        self.conv2 = nn.Conv2d(dims['conv1']['nodes'], dims['conv2']['nodes'], kernel_size=dims['conv2']['kSize'], stride = dims['conv2']['stride'])
         self.drop = nn.Dropout2d()
-        print(dims['conv2']['nodes'] * h4*w4)
-        #self.fc1 = nn.Linear(dims['conv2']['nodes'] * h4*w4, 50)
-        self.fc1 = nn.Linear(160, 50)
+        self.mPool1 = torch.nn.MaxPool2d(dims['pool1']['kSize'], stride = dims['pool1']['stride'])
+        self.mPool2 = torch.nn.MaxPool2d(dims['pool2']['kSize'], stride = dims['pool2']['stride']) 
+        self.fc1 = nn.Linear(self.linearSize, 50)
         self.fc2 = nn.Linear(50, 26)
+        
+        # Device handling CPU or GPU 
         self.device = device
 
     # ------------------
@@ -180,26 +194,28 @@ class Net(nn.Module):
     # Set the aove defined building blocks as an
     # organized, meaningful architecture here.
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        # output here is 10 x 12x12
-        x = F.relu(F.max_pool2d(self.drop(self.conv2(x)), 2))
-        # output here is 20 x 4x4 = 320 params
-        # Flatten in to 1D to feed to dense Layer.
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
+        x = self.conv1(x)
+        x = F.relu(self.mPool1(x))
+        x = self.conv2(x)
+        x = F.relu(self.mPool2(x))
         x = F.dropout(x, training=self.training)
+        #print(x.shape)
+        x = x.view(-1, self.linearSize)
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
         x = F.log_softmax(x, dim=1)
+        
         return x
 
     # ------------------
 
     def forward_no_drop(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), (2,1)))
+        x = self.conv1(x)
+        x = F.relu(self.mPool1(x))
+        x = self.conv2(x)
+        x = F.relu(self.mPool2(x))
         #print(x.shape)
-        x = F.relu(F.max_pool2d(self.conv2(x), (2,1)))
-        #print(x.shape)
-        x = x.view(-1, 160)
+        x = x.view(-1, self.linearSize)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         x = F.log_softmax(x, dim=1)
