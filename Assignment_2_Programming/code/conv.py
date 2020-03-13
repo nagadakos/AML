@@ -38,11 +38,40 @@ class Conv(nn.Module):
 
 
 
-    def init_params(self):
+    def init_params(self, kernel=None, bias=None):
         """
         Initialize the layer parameters
         :return:
         """
+        if bias is not None and len(bias.shape) != 1:
+            print("invalid bias shape. not setting.")
+            return
+        if kernel is not None:
+            biases_needed = kernel.shape[0]
+        else:
+            biases_needed = self.num_filters
+
+        if bias is not None:
+            biases_given = bias.shape[0]
+        else:
+            biases_given = self.bias.shape[0]
+
+        if biases_given != biases_needed:
+            print("Mismatch between number of filters and the number of biases given. Not setting.")
+            return
+
+        if kernel is not None:
+            self.kernel = kernel.clone().detach().requires_grad_()
+        if bias is not None:
+            self.bias = bias.clone().detach().requires_grad_()
+
+        self.num_filters = self.kernel.shape[0]
+        self.kernel_size = self.kernel.shape[1]
+
+        if self.padding:
+            self.row_pad = kernel_size // 2
+            self.col_pad = kernel_size // 2
+
 
     def forward(self, input):
         """
