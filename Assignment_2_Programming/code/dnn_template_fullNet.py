@@ -407,7 +407,9 @@ def main():
     lr, m , bSize, epochs = parse_args()
     # Load data, initialize model and optimizer!
     trainLoader, testLoader, _ = load_data(bSize=bSize)
-    model = Net().to(device)
+    dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1 }, 
+            'pool1':{'stride':(1,1), 'kSize':(2,1)}, 'pool2':{'stride':(1,1), 'kSize':(2,1)} }
+    model = Net(dims=dims).to(device)
     optim = optm.SGD(model.parameters(), lr=lr, momentum=m)
 
     print("######### Initiating Fashion MNIST network training #########\n")
