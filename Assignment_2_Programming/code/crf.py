@@ -6,7 +6,7 @@ from crf_layer import CRF_Layer
 
 class CRF_NET(nn.Module):
 
-    def __init__(self, input_dim, embed_dim = 1, kernel_size=2, num_labels=26, batch_size=32, m=14, stride = (1,1), padding = True):
+    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=32, m=14, stride = (1,1), padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
@@ -27,10 +27,10 @@ class CRF_NET(nn.Module):
         self.padding = padding
         self.cout_shape = self.get_cout_dim() # output shape of conv layer
         self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
-        
+        print(self.cout_numel)
         
         self.init_params()
-
+        self.batchLoss = 0
         ### Use GPU if available
         if self.use_cuda:
             [m.cuda() for m in self.modules()]
@@ -42,9 +42,9 @@ class CRF_NET(nn.Module):
         Initialize trainable parameters of CRF here
         """
         self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
-        self.W = torch.randn(self.num_labels, self.cout_numel, requires_grad=True)
+        self.W = torch.randn(self.num_labels, self.embed_dim, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
-        self.crf = CRF_Layer(self.W, self.T)
+        self.crf = CRF_Layer(self.W, self.T, inSize = self.embed_dim, labelSize = self.num_labels)
         
     # ------------------------------------------------------------------------------------------
     
@@ -63,15 +63,21 @@ class CRF_NET(nn.Module):
         Implement the objective of CRF here.
         The input (features) to the CRF module should be convolution features.
         """        
+        #print(len(X), X[0].shape, X[1].shape)
+        batchLoss = 0
         for i in range(self.batch_size):
             # Reshape the word to (14,1,16,8)
-            word = X[i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
+            word = X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
-            features = self.get_conv_features(word)
-            print(features.shape)
+            #print(word.shape)
+            #features = self.get_conv_features(word)
+            #print(X[1][i].shape, word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1).shape)
+            features = [[X[1][i], word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1)]]
+            #print(len(features))
             # now decode the sequence using conv features
             grads = self.crf.forward(features)
-
+            batchLoss += self.crf.get_loss()
+        self.batchLoss = batchLoss
         return grads
     
     # ------------------------------------------------------------------------------------------
@@ -147,7 +153,7 @@ class CRF_NET(nn.Module):
         Compute the negative conditional log-likelihood of a labelling given a sequence.
         """
         #features = self.get_conv_features(X)
-        loss = self.crf.get_loss()
+        loss = self.batchLoss
         return loss
 
     
@@ -160,6 +166,7 @@ class CRF_NET(nn.Module):
         Generate convolution features for a given word
         """
         cout = self.conv.forward(word)
+        print(cout.shape)
         cout = cout.reshape(cout.shape[0], self.cout_numel)
         return cout
 
@@ -169,7 +176,7 @@ class CRF_NET(nn.Module):
 
 def main():
 
-    model = CRF_NET((16,8))
+    model = CRF_NET((16,8), padding = False)
     
 if __name__ == "__main__":
     main()

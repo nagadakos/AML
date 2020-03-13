@@ -7,8 +7,8 @@ class DataLoader:
         data_path = '../data/letter.data.gz'
         lines = self._read(data_path)
         data, target = self._parse(lines)
-        self.data, self.target = self._pad(data, target)
-
+        self.data, self.target,self.max_length = self._pad(data, target)
+        
     @staticmethod
     def _read(filepath):
         with gzip.open(filepath, 'rt') as file_:
@@ -44,22 +44,33 @@ class DataLoader:
         padding = np.zeros((16, 8))
         data = [x + ([padding] * (max_length - len(x))) for x in data]
         target = [x + ([''] * (max_length - len(x))) for x in target]
-        return np.array(data), np.array(target)
+        #target = [x for x in target]
+        #target += [[''] * (max_length - len())]
+        return np.array(data), np.array(target), max_length
 
-def get_dataset(flatten=False):
+def get_dataset(flatten=False, toOneHot = False):
     dataset = DataLoader()
 
     if flatten:
     # Flatten images into vectors.
         dataset.data = dataset.data.reshape(dataset.data.shape[:2] + (-1,))
-
-     # One-hot encode targets.
-    target = np.zeros(dataset.target.shape + (26,))
-    for index, letter in np.ndenumerate(dataset.target):
-        if letter:
-            target[index][ord(letter) - ord('a')] = 1
+    
+    if toOneHot == True:
+         # One-hot encode targets.
+        target = np.zeros(dataset.target.shape + (26,))
+        for index, letter in np.ndenumerate(dataset.target):
+            if letter:
+                target[index][ord(letter) - ord('a')] = 1
+    else:
+        target = np.zeros(dataset.target.shape)
+        j = 0
+        for index, letter in np.ndenumerate(dataset.target):
+            if letter:
+                target[index[0]][j] = float(ord(letter) - ord('a') + 1)
+            j = j+1 if  j < dataset.max_length-1 else 0
+            
     dataset.target = target
-
+     
     # Shuffle order of examples.
     order = np.random.permutation(len(dataset.data))
     dataset.data = dataset.data[order]

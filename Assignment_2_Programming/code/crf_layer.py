@@ -73,7 +73,7 @@ class CRF_Layer(nn.Module):
     # -------------------------------------------------------------
       
     def computeAllDotProduct(self,w, word):
-
+        #print(len(word), word[0], word[1][0].shape)
         label, data = word
         #dots = np.dot(w, data.transpose())
         dots = torch.mm(w, data.transpose(0,1))
@@ -248,7 +248,7 @@ class CRF_Layer(nn.Module):
         w = self.w
         T = self.t
         #m = self.m
-        ret = torch.zeros(len(inX), len(inX[0][0]))
+        ret = torch.zeros(len(inX), len(inX[1][0])) # return tensor should be batch size x word size
         for j, (label,word) in enumerate(inX):
             x = word
             m = word.shape[0]
@@ -290,7 +290,7 @@ class CRF_Layer(nn.Module):
             for pos in range(m-2, -1, -1):
                 letter_indicies[pos, 0] = pos_best_prevletter_table[pos+1, letter_indicies[pos+1, 0]]
             ret[j,:] = letter_indicies.flatten() 
-        #self.compute_grads(inX, self.C)
+            
         return ret
     
     # -------------------------------------------------------------

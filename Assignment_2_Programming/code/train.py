@@ -22,9 +22,28 @@ cuda = torch.cuda.is_available()
 
 # Instantiate the CRF model
 #crf = CRF(input_dim, embed_dim, conv_shapes, num_labels, batch_size)
-crf = CRF_NET((16,8))
+crf = CRF_NET((16,8), padding = True)
 # Setup the optimizer
 opt = optim.LBFGS(crf.parameters())
+
+
+
+
+def evaluate_crf_predictions(pred, letterLabels):
+    letterAcc, wordAcc = 0.0,0.0
+    
+    for i, label in enumerate(letterLabels):       
+        
+        # Get correct labels
+        decSeq = pred[i]
+        
+        res = torch.sum((decSeq == label))     # find the number of labels that are equal to ground Truth
+        letterAcc += res                                                              # Letterwise acc is increases for every match found
+        wordAcc += 1 if res == decSeq.shape[0] else 0                                 # word acc increases only when ALL labels are correct
+    # Average out letter-wise acc over all letter and word-wise over all words.  
+    letterAcc /= pred.numel()
+    wordAcc /= pred.shape[0] # len gives as the number of words (each word is a line and the value is at which letter index it ends!)
+    return letterAcc, wordAcc
 
 
 ##################################################
@@ -73,12 +92,18 @@ for i in range(num_epochs):
             train_Y = train_Y.cuda()
 
         # compute loss, grads, updates:
-        opt.zero_grad() # clear the gradients
-        print(cuda)
-        _ = crf.forward(sample)
-        tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
-        tr_loss.backward() # Run backward pass and accumulate gradients
-        opt.step() # Perform optimization step (weight updates)
+        def closure():
+            opt.zero_grad()
+            _ = crf.forward(sample)
+            tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
+            tr_loss.backward() # Run backward pass and accumulate gradients
+            return tr_loss
+        tr_loss = crf.loss(train_X, train_Y)
+        #opt.zero_grad() # clear the gradients
+        #_ = crf.forward(sample)
+        #tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
+        #tr_loss.backward() # Run backward pass and accumulate gradients
+        opt.step(closure) # Perform optimization step (weight updates)
 
         # print to stdout occasionally:
         if step % print_iter == 0:
@@ -94,15 +119,18 @@ for i in range(num_epochs):
                 test_X = test_X.cuda()
                 test_Y = test_Y.cuda()
             test_loss = crf.loss(test_X, test_Y)
-            print(step, tr_loss.data, test_loss.data,
-                       tr_loss.data / batch_size, test_loss.data / batch_size)
+            print(step, tr_loss.item(), test_loss.item(),
+                       tr_loss.item() / batch_size, test_loss.item() / batch_size)
 
 			##################################################################
 			# IMPLEMENT WORD-WISE AND LETTER-WISE ACCURACY HERE
 			##################################################################
-
-            print(blah)
-
+    for t_batch, sample in enumerate(test_loader): 
+        preds = crf.predict(sample)
+        labels = sample[1]
+        lAcc, wAcc = evaluate_crf_predictions(preds, labels)
+        print("Letter Accuracy: {}, Word Accuracy: {}".format(lAcc, wAcc))
+        
         step += 1
         if step > max_iters: raise StopIteration
     del train, test

@@ -84,7 +84,7 @@ class Conv(nn.Module):
                                                    col_stride * j: col_stride * j + kernel_size]
                                                    * kernel[:, :, :],
                                                    (-1, -2))
-
+        
         return result
 
     # def backward(self):
