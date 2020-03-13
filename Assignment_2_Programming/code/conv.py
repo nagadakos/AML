@@ -57,7 +57,8 @@ class Conv(nn.Module):
             biases_given = self.bias.shape[0]
 
         if biases_given != biases_needed:
-            print("Mismatch between number of filters and the number of biases given. Not setting.")
+            print("Mismatch between number of filters and the number of biases given. Not setting."
+                  "Bias should be 1-dimensional vector of size = no. of filters.")
             return
 
         if kernel is not None:
@@ -69,8 +70,8 @@ class Conv(nn.Module):
         self.kernel_size = self.kernel.shape[1]
 
         if self.padding:
-            self.row_pad = kernel_size // 2
-            self.col_pad = kernel_size // 2
+            self.row_pad = self.kernel_size // 2
+            self.col_pad = self.kernel_size // 2
 
 
     def forward(self, input):
