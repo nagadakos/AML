@@ -130,7 +130,6 @@ for i in range(num_epochs):
     for t_batch, sample in enumerate(test_loader): 
         if cuda:
             sample = sample.cuda()
-            
         preds = crf.predict(sample)
         labels = sample[1]
         lAcc, wAcc = evaluate_crf_predictions(preds, labels)
