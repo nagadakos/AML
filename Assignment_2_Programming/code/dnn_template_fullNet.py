@@ -304,16 +304,17 @@ class Net(nn.Module):
                                               len(testLoader.dataset)))
 
         # Testing and error reports are done here
-    def predict(self, device, testLoader):
+    def predict(self, testLoader):
         print("In  Function!")        
         loss = 0 
         true = 0
         acc  = 0
+        dev = self.device
         # Inform Pytorch that keeping track of gradients is not required in
         # testing phase.
         with torch.no_grad():
             for data, label in testLoader:
-                data, label = data.to(device), label.to(device)
+                data, label = data.to(dev), label.to(dev)
                 output = self.get_redicitons(data)
                 
         
@@ -349,7 +350,7 @@ class Net(nn.Module):
                 plt.savefig(saveFile)
             return fig
     
-    def evaluate(self, dataLoaders, kwArgs = {'lr':0.001, 'm':0.9, 'bSize':32, 'epochs':12}):
+    def evaluate(self, dataLoaders, kwArgs = {'lr':0.001, 'm':0.9, 'bSize':32, 'epochs':12, 'opt': 'adam'}):
         """ DESCRIPTION: THis function will fit and test on hte given dataloader and the given kwargs.
                          It stores training and testing information in the model class variables, along
                          with learned weights.
@@ -362,7 +363,10 @@ class Net(nn.Module):
         dev = self.device
         # Load data, initialize model and optimizer!
         trainLoader, testLoader = dataLoaders[0], dataLoaders[1]
-        optim = optm.SGD(self.parameters(), lr=lr, momentum=m)
+        if kwArgs['opt'] == 'adam':
+            optim = optm.Adam(self.parameters(), lr=lr)
+        else:
+            optim = optm.SGD(self.parameters(), lr=lr, momentum=m)
 
         print("######### Initiating Network Training and Testing #########\n")
         print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))

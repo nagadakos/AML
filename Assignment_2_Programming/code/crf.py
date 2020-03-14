@@ -6,7 +6,7 @@ from crf_layer import CRF_Layer
 from dnn_template_fullNet import comp_conv_dimensions
 class CRF_NET(nn.Module):
 
-    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=32, m=14, stride = (1,1), convNodes= 5, padding = True):
+    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=256, m=14, stride = (1,1), convNodes= 5, padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
@@ -26,8 +26,8 @@ class CRF_NET(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        self.cout_shape = self.get_cout_dim() # output shape of conv layer
-        self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
+        #self.cout_shape = self.get_cout_dim() # output shape of conv layer
+        #self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
         h1, w1 = comp_conv_dimensions('2d', 16,8, kernel_size, stride = stride)
         self.embed_dim = h1*w1 * self.convNodes
         print("Cout dims: " + str(self.embed_dim))
@@ -94,6 +94,7 @@ class CRF_NET(nn.Module):
     # input: T: (26, 26), letter-letter transition matrix
     # output: letter_indices: (m, 1), letter labels of a word
     def predict(self, x):
+        print("Here")
         decods = torch.zeros(self.batch_size, self.m, dtype=torch.int)
         for i in range(self.batch_size):
             # Reshape the word to (14,1,16,8)
@@ -185,7 +186,10 @@ class CRF_NET(nn.Module):
 def main():
 
     model = CRF_NET((16,8), padding = False)
-    
+    data = torch.zeros(256,14,16,8)
+    labels = torch.zeros(256,14)
+    pred = model.predict([data,labels])
+    print(pred.shape)
 if __name__ == "__main__":
     main()
 
