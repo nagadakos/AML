@@ -94,15 +94,16 @@ class CRF_NET(nn.Module):
     # input: T: (26, 26), letter-letter transition matrix
     # output: letter_indices: (m, 1), letter labels of a word
     def predict(self, x):
-        decods = torch.zeros(self.batch_size, self.m, 1, dtype=torch.int)
+        decods = torch.zeros(self.batch_size, self.m, dtype=torch.int)
         for i in range(self.batch_size):
             # Reshape the word to (14,1,16,8)
-            word = X[i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
+            word = x[0][i].reshape(self.m,1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
-            features = self.get_conv_features(word)
+            #features = self.get_conv_features(word)
+            features = self.conv(word)
             # now decode the sequence using conv features
             #decods[i] = self.dp_infer(features)
-            decods[i] = self.crf.predict(features)
+            decods[i] = self.crf.predict([features.reshape(self.m,-1)])
 
         return decods
     

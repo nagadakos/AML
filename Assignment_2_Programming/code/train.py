@@ -81,47 +81,48 @@ print('Loaded dataset... ')
 for i in range(num_epochs):
     print("Processing epoch {}".format(i))
     # Now start training
-    for i_batch, sample in enumerate(train_loader):
+    if False:
+        for i_batch, sample in enumerate(train_loader):
 
-        train_X = sample[0]
-        train_Y = sample[1]
-
-        if cuda:
-            train_X = train_X.cuda()
-            train_Y = train_Y.cuda()
-
-        # compute loss, grads, updates:
-        def closure():
-            opt.zero_grad()
-            _ = crf.forward(sample)
-            tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
-            tr_loss.backward() # Run backward pass and accumulate gradients
-            return tr_loss
-        
-        tr_loss = crf.loss(train_X, train_Y)
-        #opt.zero_grad() # clear the gradients
-        #_ = crf.forward(sample)
-        #tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
-        #tr_loss.backward() # Run backward pass and accumulate gradients
-        opt.step(closure) # Perform optimization step (weight updates)
-
-        # print to stdout occasionally:
-        if step % print_iter == 0:
-            random_ixs = np.random.choice(test_data.shape[0], batch_size, replace=False)
-            test_X = test_data[random_ixs, :]
-            test_Y = test_target[random_ixs, :]
-
-            # Convert to torch
-            test_X = torch.from_numpy(test_X).float()
-            test_Y = torch.from_numpy(test_Y).long()
+            train_X = sample[0]
+            train_Y = sample[1]
 
             if cuda:
-                test_X = test_X.cuda()
-                test_Y = test_Y.cuda()
-            test_loss = crf.loss(test_X, test_Y)
-            tr_loss = tr_loss.item() if 'Tensor' in str(type(tr_loss)) else tr_loss
-            print(step, tr_loss, test_loss.item(),
-                       tr_loss / batch_size, test_loss.item() / batch_size)
+                train_X = train_X.cuda()
+                train_Y = train_Y.cuda()
+
+            # compute loss, grads, updates:
+            def closure():
+                opt.zero_grad()
+                _ = crf.forward(sample)
+                tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
+                tr_loss.backward() # Run backward pass and accumulate gradients
+                return tr_loss
+
+            tr_loss = crf.loss(train_X, train_Y)
+            #opt.zero_grad() # clear the gradients
+            #_ = crf.forward(sample)
+            #tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
+            #tr_loss.backward() # Run backward pass and accumulate gradients
+            opt.step(closure) # Perform optimization step (weight updates)
+
+            # print to stdout occasionally:
+            if step % print_iter == 0:
+                random_ixs = np.random.choice(test_data.shape[0], batch_size, replace=False)
+                test_X = test_data[random_ixs, :]
+                test_Y = test_target[random_ixs, :]
+
+                # Convert to torch
+                test_X = torch.from_numpy(test_X).float()
+                test_Y = torch.from_numpy(test_Y).long()
+
+                if cuda:
+                    test_X = test_X.cuda()
+                    test_Y = test_Y.cuda()
+                test_loss = crf.loss(test_X, test_Y)
+                tr_loss = tr_loss.item() if 'Tensor' in str(type(tr_loss)) else tr_loss
+                print(step, tr_loss, test_loss.item(),
+                           tr_loss / batch_size, test_loss.item() / batch_size)
 
 			##################################################################
 			# IMPLEMENT WORD-WISE AND LETTER-WISE ACCURACY HERE

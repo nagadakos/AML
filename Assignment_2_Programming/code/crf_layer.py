@@ -248,9 +248,9 @@ class CRF_Layer(nn.Module):
         w = self.w
         T = self.t
         #m = self.m
-        ret = torch.zeros(len(inX), len(inX[1][0])) # return tensor should be batch size x word size
-        for j, (label,word) in enumerate(inX):
-            x = word
+        ret = torch.zeros(len(inX), len(inX[0])) # return tensor should be batch size x word size
+        for j, word in enumerate(inX):
+            x = inX[j]
             m = word.shape[0]
             
             pos_letter_value_table = torch.zeros((m, self.K), dtype=torch.float64)
