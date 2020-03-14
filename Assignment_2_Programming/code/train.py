@@ -129,7 +129,7 @@ for i in range(num_epochs):
 			##################################################################
     for t_batch, sample in enumerate(test_loader): 
         if cuda:
-            sample = sample.cuda()
+            sample = [s.cuda() for s in sample]
             
         preds = crf.predict(sample)
         labels = sample[1]
