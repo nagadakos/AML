@@ -15,7 +15,7 @@ input_K = torch.tensor([[[1, 0, 1],
 # kernel must be three dimensional: num_filters x rows x columns
 
 
-cl = Conv(3, 1, padding=1, stride=(1, 1))
+cl = Conv(3, 1)
 cl.init_params(kernel=input_K, bias=torch.tensor([0], dtype=torch.float))
 
 output = cl(input_X)
