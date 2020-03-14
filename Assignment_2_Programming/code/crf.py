@@ -7,7 +7,7 @@ from dnn_template_fullNet import comp_conv_dimensions
 import time
 class CRF_NET(nn.Module):
 
-    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=256, m=14, stride = (1,1), convNodes= 5, padding = True):
+    def __init__(self, input_dim, embed_dim = 18, kernel_size=5, kernel_size2= None, num_labels=27, batch_size=256, m=14, stride = (1,1), convNodes= 5, padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
@@ -24,12 +24,15 @@ class CRF_NET(nn.Module):
         
         # conv layer params
         self.out_channels = 1 # output channel of conv layer
-        self.kernel_size = kernel_size
-        self.stride = stride
+        self.kernel_size  = kernel_size
+        self.kernel_size2 = kernel_size2
+        self.stride  = stride
         self.padding = padding
         self.cout_shape = self.get_cout_dim() # output shape of conv layer
         self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
         h1, w1 = comp_conv_dimensions('2d', 16,8, kernel_size, stride = stride)
+        if kernel_size2 is not None:
+            h1, w1 = comp_conv_dimensions('2d', h1,w1, kernel_size2, stride = stride)
         self.embed_dim = h1*w1 * self.convNodes
         print("Cout dims: " + str(self.embed_dim))
         
@@ -47,6 +50,8 @@ class CRF_NET(nn.Module):
         """
         #self.conv = Conv(self.kernel_size, self.convNodes, stride=self.stride)
         self.conv = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size, stride = self.stride)
+        if self.kernel_size2 is not None:
+            self.conv2 = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size2, stride = self.stride)
         self.W = torch.randn(self.num_labels, self.embed_dim, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
         self.crf = CRF_Layer(self.W, self.T, inSize = self.embed_dim, labelSize = self.num_labels)
@@ -74,7 +79,7 @@ class CRF_NET(nn.Module):
         bSize = X[0].shape[0]
         words = [X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1]) for i in range(bSize)]
         
-        features = [[X[1][i], self.conv(words[i]).squeeze().reshape(words[i].shape[0],-1)] for i in range(bSize)]
+        features = [[X[1][i], self.get_conv_features(words[i]).squeeze().reshape(words[i].shape[0],-1)] for i in range(bSize)]
         # now decode the sequence using conv features
         grads = self.crf.forward(features)
         # print("{} crf_layer.forward".format(time.time()-b))
@@ -152,9 +157,9 @@ class CRF_NET(nn.Module):
         """
         Generate convolution features for a given word
         """
-        cout = self.conv.forward(word)
-        print(cout.shape)
-        cout = cout.reshape(cout.shape[0], self.cout_numel)
+        cout = self.conv(word)
+        if self.kernel_size2 is not None:
+            cout = self.conv2(cout)
         return cout
 
 # ========================================================================================
