@@ -86,6 +86,7 @@ class Conv(nn.Module):
         num_filters = self.num_filters
         result_batch_size = input.shape[0]
 
+
         if self.padding:
             input = torch.nn.ZeroPad2d((self.row_pad, self.row_pad, self.col_pad, self.col_pad))(input)
 
@@ -114,6 +115,21 @@ class Conv(nn.Module):
                                                col_stride * j: col_stride * j + kernel_size]
                                                * kernel[:, :, :],
                                                (-1, -2)) + self.bias
+                # result[:, :, i, j] = torch.sum(input[:,
+                #                                :,
+                #                                i: i + kernel_size,
+                #                                j: j + kernel_size]
+                #                                * kernel[:, :, :],
+                #                                (-1, -2)) + self.bias
+
+        # if self.padding:
+        #     result = result[:, :, self.row_pad:-self.row_pad, self.col_pad:-self.col_pad]
+
+        # if self.row_stride > 1:
+        #     result = result[:, :, ::self.row_stride, :]
+        #
+        # if self.col_stride > 1:
+        #     result = result[:, :, :, ::self.col_stride]
 
         return result
 
