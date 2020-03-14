@@ -6,6 +6,8 @@ import numpy as np
 from crf import CRF_NET
 
 
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
 # Tunable parameters
 batch_size = 256
 num_epochs = 10
@@ -81,7 +83,7 @@ print('Loaded dataset... ')
 for i in range(num_epochs):
     print("Processing epoch {}".format(i))
     # Now start training
-    if False:
+    if True:
         for i_batch, sample in enumerate(train_loader):
 
             train_X = sample[0]
