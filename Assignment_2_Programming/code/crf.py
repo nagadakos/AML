@@ -4,6 +4,7 @@ import numpy as np
 from conv import Conv
 from crf_layer import CRF_Layer
 from dnn_template_fullNet import comp_conv_dimensions
+import time
 class CRF_NET(nn.Module):
 
     def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=256, m=14, stride = (1,1), convNodes= 5, padding = True):
@@ -26,8 +27,8 @@ class CRF_NET(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        #self.cout_shape = self.get_cout_dim() # output shape of conv layer
-        #self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
+        self.cout_shape = self.get_cout_dim() # output shape of conv layer
+        self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
         h1, w1 = comp_conv_dimensions('2d', 16,8, kernel_size, stride = stride)
         self.embed_dim = h1*w1 * self.convNodes
         print("Cout dims: " + str(self.embed_dim))
@@ -44,7 +45,7 @@ class CRF_NET(nn.Module):
         """
         Initialize trainable parameters of CRF here
         """
-        #self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
+        #self.conv = Conv(self.kernel_size, self.convNodes, stride=self.stride)
         self.conv = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size, stride = self.stride)
         self.W = torch.randn(self.num_labels, self.embed_dim, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
@@ -67,93 +68,69 @@ class CRF_NET(nn.Module):
         Implement the objective of CRF here.
         The input (features) to the CRF module should be convolution features.
         """        
-        #print(len(X), X[0].shape, X[1].shape)
+        
+        b = time.time()
         batchLoss = 0
         bSize = X[0].shape[0]
-        for i in range(bSize):
-            # Reshape the word to (14,1,16,8)
-            word = X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
-            # conv operation performed for one word independently to every letter
-            #print(word.shape)
-            #features = self.get_conv_features(word)
-            features = self.conv(word)
-            #print(features.shape)
-            #print(X[1][i].shape, features.squeeze().reshape(word.shape[0],-1).shape)
-            #features = [[X[1][i], word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1)]]
-            features = [[X[1][i], features.squeeze().reshape(word.shape[0],-1)]]
-            #print(len(features))
-            # now decode the sequence using conv features
-            grads = self.crf.forward(features)
-            batchLoss += self.crf.get_loss()
+        words = [X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1]) for i in range(bSize)]
+        
+        features = [[X[1][i], self.conv(words[i]).squeeze().reshape(words[i].shape[0],-1)] for i in range(bSize)]
+        # now decode the sequence using conv features
+        grads = self.crf.forward(features)
+        # print("{} crf_layer.forward".format(time.time()-b))
+        batchLoss += self.crf.get_loss()
+
         self.batchLoss = batchLoss
         return grads
     
+
+    def forward_multi(self,):
+        # Reshape the word to (14,1,16,8)
+
+
+        word = X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
+        
+        print("{} reshape: {}".format(i,time.time()-b))
+        # conv operation performed for one word independently to every letter
+        #print(word.shape)
+        #features = self.get_conv_features(word)
+        features = self.conv(word)
+        
+        print("{} conv: {}".format(i,time.time()-b))
+        features = [[X[1][i], features.squeeze().reshape(word.shape[0],-1)]]
+        # now decode the sequence using conv features
+        print("{} squeeze: {}".format(i,time.time()-b))
+        
+        grads = self.crf.forward(features)
+        
+        print("{} forward: {}".format(i,time.time()-b))
+
+        
+        batchLoss += self.crf.get_loss()
+        
+        print("{} batchLoss: {}".format(i,time.time()-b))
+        return
+
     # ------------------------------------------------------------------------------------------
     
-    # input: x: (m, d), m is # of letters a word has, d is the feature dimension of letter image
-    # input: w: (26, d), letter weight vector
-    # input: T: (26, 26), letter-letter transition matrix
+    # input dim: x = [(batch_size, m, 16, 8), (batch_size,labels)] m = 14 world length
     # output: letter_indices: (m, 1), letter labels of a word
     def predict(self, x):
-        bSize = x[0].shape[0]
-        decods = torch.zeros(bSize, self.m, dtype=torch.int)
-        for i in range(bSize):
+        decods = torch.zeros(self.batch_size, self.m, dtype=torch.int)
+        for i in range(self.batch_size):
             # Reshape the word to (14,1,16,8)
+            #import pdb; pdb.set_trace()
             word = x[0][i].reshape(self.m,1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
             #features = self.get_conv_features(word)
+
             features = self.conv(word)
             # now decode the sequence using conv features
             #decods[i] = self.dp_infer(features)
-            decods[i],_ = self.crf.predict([features.reshape(self.m,-1)])
+            decods[i] = self.crf.predict([features.reshape(self.m,-1)])
 
         return decods
     
-    # ------------------------------------------------------------------------------------------
-    
-    # decode a sequence of letters for one word
-    def dp_infer(self, x):
-        w = self.W
-        T = self.T
-        m = self.m
-    
-        pos_letter_value_table = torch.zeros((m, 26), dtype=torch.float64)
-        pos_best_prevletter_table = torch.zeros((m, 26), dtype=torch.int)
-        # for the position 1 (1st letter), special handling
-        # because only w and x dot product is covered and transition is not considered.
-        for i in range(26):
-        # print(w)
-        # print(x)
-            pos_letter_value_table[0, i] = torch.dot(w[i, :], x[0, :])
-        
-        # pos_best_prevletter_table first row is all zero as there is no previous letter for the first letter
-        
-        # start from 2nd position
-        for pos in range(1, m):
-        # go over all possible letters
-            for letter_ind in range(self.num_labels):
-                # get the previous letter scores
-                prev_letter_scores = pos_letter_value_table[pos-1, :].clone()
-                # we need to calculate scores of combining the current letter and all previous letters
-                # no need to calculate the dot product because dot product only covers current letter and position
-        	        # which means it is independent of all previous letters
-                for prev_letter_ind in range(self.num_labels):
-                    prev_letter_scores[prev_letter_ind] += T[prev_letter_ind, letter_ind]
-        
-                # find out which previous letter achieved the largest score by now
-                best_letter_ind = torch.argmax(prev_letter_scores)
-                # update the score of current positive with current letter
-                pos_letter_value_table[pos, letter_ind] = prev_letter_scores[best_letter_ind] + torch.dot(w[letter_ind,:], x[pos, :])
-                # save the best previous letter for following tracking to generate most possible word
-                pos_best_prevletter_table[pos, letter_ind] = best_letter_ind
-        letter_indicies = torch.zeros((m, 1), dtype=torch.int)
-        letter_indicies[m-1, 0] = torch.argmax(pos_letter_value_table[m-1, :])
-        max_obj_val = pos_letter_value_table[m-1, letter_indicies[m-1, 0]]
-        # print(max_obj_val)
-        for pos in range(m-2, -1, -1):
-            letter_indicies[pos, 0] = pos_best_prevletter_table[pos+1, letter_indicies[pos+1, 0]]
-        return letter_indicies
-
     # ------------------------------------------------------------------------------------------
     
     def loss(self, X, labels):
@@ -187,10 +164,7 @@ class CRF_NET(nn.Module):
 def main():
 
     model = CRF_NET((16,8), padding = False)
-    data = torch.zeros(256,14,16,8)
-    labels = torch.zeros(256,14)
-    pred = model.predict([data,labels])
-    print(pred.shape)
+    
 if __name__ == "__main__":
     main()
 
