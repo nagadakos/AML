@@ -37,7 +37,7 @@ def evaluate_crf_predictions(pred, letterLabels):
         # Get correct labels
         decSeq = pred[i]
         
-        res = torch.sum((decSeq == label))     # find the number of labels that are equal to ground Truth
+        res = torch.sum((decSeq == label).to('cuda'))     # find the number of labels that are equal to ground Truth
         letterAcc += res                                                              # Letterwise acc is increases for every match found
         wordAcc += 1 if res == decSeq.shape[0] else 0                                 # word acc increases only when ALL labels are correct
     # Average out letter-wise acc over all letter and word-wise over all words.  
@@ -133,7 +133,7 @@ for i in range(num_epochs):
             
         preds = crf.predict(sample)
         labels = sample[1]
-        lAcc, wAcc = evaluate_crf_predictions(preds, labels)
+        lAcc, wAcc = evaluate_crf_predictions(preds.to("cuda"), labels)
         print("Letter Accuracy: {}, Word Accuracy: {}".format(lAcc, wAcc))
         
         step += 1
