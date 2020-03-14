@@ -94,7 +94,7 @@ for i in range(num_epochs):
             # compute loss, grads, updates:
             def closure():
                 opt.zero_grad()
-                _ = crf.forward(sample)
+                _ = crf.forward([train_X, train_Y])
                 tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
                 tr_loss.backward() # Run backward pass and accumulate gradients
                 return tr_loss
@@ -128,6 +128,9 @@ for i in range(num_epochs):
 			# IMPLEMENT WORD-WISE AND LETTER-WISE ACCURACY HERE
 			##################################################################
     for t_batch, sample in enumerate(test_loader): 
+        if cuda:
+            sample = sample.cuda()
+            
         preds = crf.predict(sample)
         labels = sample[1]
         lAcc, wAcc = evaluate_crf_predictions(preds, labels)
