@@ -325,14 +325,16 @@ class Net(nn.Module):
         print("Training Loss: {}" .format(self.trainLoss))
         print("Test Loss:     {}" .format(self.testLoss))
 
-    def plot(self,figType = 'acc', saveFile = None):
+    def plot(self, inData = None, figType = 'acc', saveFile = None):
         if figType == 'acc':
             fig = plt.figure()
             plt.title('Test Accuracy vs Epoch')
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             xAxis = np.arange(len(self.history[2]))+1
-            plt.plot(xAxis, self.history[2], marker = 'o')
+            plt.plot(xAxis, self.history[2], marker = 'o', label = 'Letterwize Acc')
+            if inData is not None:
+                plt.plot(xAxis, inData, marker = 'o', label = 'Wordwise Acc')
             if saveFile is not None:
                 plt.savefig(saveFile)
             return fig

@@ -69,7 +69,8 @@ class CRF_NET(nn.Module):
         """        
         #print(len(X), X[0].shape, X[1].shape)
         batchLoss = 0
-        for i in range(self.batch_size):
+        bSize = X[0].shape[0]
+        for i in range(bSize):
             # Reshape the word to (14,1,16,8)
             word = X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
@@ -94,9 +95,9 @@ class CRF_NET(nn.Module):
     # input: T: (26, 26), letter-letter transition matrix
     # output: letter_indices: (m, 1), letter labels of a word
     def predict(self, x):
-        print("Here")
-        decods = torch.zeros(self.batch_size, self.m, dtype=torch.int)
-        for i in range(self.batch_size):
+        bSize = x[0].shape[0]
+        decods = torch.zeros(bSize, self.m, dtype=torch.int)
+        for i in range(bSize):
             # Reshape the word to (14,1,16,8)
             word = x[0][i].reshape(self.m,1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
