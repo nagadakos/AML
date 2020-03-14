@@ -12,7 +12,7 @@ import time
 batch_size = 256
 num_epochs = 10
 max_iters  = 1000
-print_iter = 25 # Prints results every n iterations
+print_iter = 10 # Prints results every n iterations
 conv_shapes = [[1,64,128]] #
 
 
@@ -74,6 +74,7 @@ train_loader = data_utils.DataLoader(train,  # dataset to load from
                                      sampler=None,  # if a sampling method is specified, `shuffle` must be False
                                      num_workers=0,  # subprocesses to use for sampling
                                      pin_memory=False,  # whether to return an item pinned to GPU
+                                     drop_last=True
                                      )
 
 test_loader = data_utils.DataLoader(test,  # dataset to load from
@@ -82,6 +83,7 @@ test_loader = data_utils.DataLoader(test,  # dataset to load from
                                     sampler=None,  # if a sampling method is specified, `shuffle` must be False
                                     num_workers=0,  # subprocesses to use for sampling
                                     pin_memory=False,  # whether to return an item pinned to GPU
+                                    drop_last=True
                                     )
 print('Loaded dataset... ')
 start = time.time()
@@ -91,7 +93,7 @@ for i in range(num_epochs):
     # Now start training
     if True:
         for i_batch, sample in enumerate(train_loader):
-
+            a = time.time()
             train_X = sample[0]
             train_Y = sample[1]
 
@@ -113,9 +115,9 @@ for i in range(num_epochs):
             #tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
             #tr_loss.backward() # Run backward pass and accumulate gradients
             opt.step(closure) # Perform optimization step (weight updates)
-
+            print("{} time: {}".format(i_batch,time.time() - a))
             # print to stdout occasionally:
-            if step % print_iter == 0:
+            if i_batch % print_iter == 0:
                 random_ixs = np.random.choice(test_data.shape[0], batch_size, replace=False)
                 test_X = test_data[random_ixs, :]
                 test_Y = test_target[random_ixs, :]
@@ -129,7 +131,7 @@ for i in range(num_epochs):
                     test_Y = test_Y.cuda()
                 test_loss = crf.loss(test_X, test_Y)
                 tr_loss = tr_loss.item() if 'Tensor' in str(type(tr_loss)) else tr_loss
-                print(step, tr_loss, test_loss.item(),
+                print(i_batch, tr_loss, test_loss.item(),
                            tr_loss / batch_size, test_loss.item() / batch_size)
 
 	##################################################################
