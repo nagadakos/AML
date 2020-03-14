@@ -242,8 +242,63 @@ class CRF_Layer(nn.Module):
         return gradients
     
     # -------------------------------------------------------------
-    
     def predict(self, inX):
+        """ DESCRIPTION: Using max-sum algorithm to decode. THis function will use the forward pass to compute
+                         the most probable last letter, at place m for a seq of length m. Then using that knowledge
+                         it will go backwards at m-1 extracting the character that was most likely to lead to the most probable 
+                         character at place m. It will recurcively continue until we have a candidate at place m=0 and return
+                         the labels that we are most confident they match the input.
+            ARGUMENTS: seq(ndarray): a sequqnce that contains aoiur input data.
+        """
+        # Init
+        w = self.w
+        t = self.t
+        seq = inX[0]
+        seqLen  = seq.shape[0]
+        dataLen = w.shape[0]
+        cMat    = torch.zeros((seqLen, dataLen))
+        bMat    = torch.matmul(seq, w.transpose(0,1)) # this gives the probability of observing each i standalone
+        maxIdx  = torch.zeros((seqLen, dataLen), dtype = np.int)
+        decSeq  = []
+        maxObj  = 0
+        ci = np.zeros((26,26))
+
+        # Get step 0 estimates
+        step0    = torch.matmul(seq[0,:], w.transpose(0,1))
+        c1 = step0+t      # the previous node potential x edje potenital for all i->j pairs
+        maxIdx[0,:] = torch.argmax(c1, axis = 0) #1x26 the max elem indexes
+        c1 = c1[maxIdx[0,:], torch.arange(c1.shape[1])] #1x26 select the max element, as indexed by maxIdx, for every column
+        cMat[0,:] = 0
+        #print("Input shapes: sequence: {}, weights: {}, T matrix:{}".format(seq.shape,w.shape,t.shape))
+
+        # Perform a pass over steps 1-99 or 2-100 in 1-index notation!
+        for i in range(1,seqLen):
+            fi  = bMat[i-1,:].reshape(-1,1)              # get likelihood of i observation being any letter as standalone 
+            cYi = cMat[i-1,:].reshape(-1,1)            # i-1 step's potential msg to this node i
+            cYj = fi + t + cYi     # mul the likelihood of each letter with all transition probs.
+            #if i ==1:
+                #print(cYi.shape,cYj.shape)
+            maxIdx[i,:] = torch.argmax(cYj, axis = 0) #1x26 the max elem indexes
+            cYj = cYj[maxIdx[i,:], torch.arange(cYj.shape[1])] #1x26 select the max element, as indexed by maxIdx, for every column
+            #cYj = np.multiply(cYj, cYi)  # multiply current cYj = g_yj->yi* fj with pervious node's(i-1) msgs to yield the msg node i will wend to i+1
+            cMat[i,:] = cYj              # store this node's msg, in order to send it to i+1 on next step!
+            #if i == 1:
+            #    print(cYj, cYj.shape, fi.shape)
+        maxObj = torch.max(cYj).item()             # max objective value is the maximum of the lasp step's messages or potentials Y_end 
+        # Backward pass.
+        # At each step, the element e at slot i is the label that most likely lead to the lable represented as i.
+        # So at i.e if 95,5 = 11, then that means that the most probable letter that leads to f(idx 5) if letter 11 or l (label 11). All indexing is 0 based.
+        decSeq     = torch.zeros((seqLen), dtype = np.int)
+        lastMax    = torch.argmax(maxIdx[-1,:]) # get the most probable last element. use this to recurse and find the most prob sequence
+        decSeq[-1] = lastMax
+        for i in range(seqLen-2,-1,-1):
+            #print("i is ", i, "decSeq of ", i+1, "is", decSeq[i+1])
+            curMax = maxIdx[i,decSeq[i+1]]
+            decSeq[i] = curMax
+        # Remember that python indexes from 0. Labels are 1-26 so we must add 1 to compensate
+        return decSeq+1, maxObj 
+    # ---------------------------------------------------------------------------
+    def predict_old(self, inX):
         # decode a sequence of letters for one word
         w = self.w
         T = self.t

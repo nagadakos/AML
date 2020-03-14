@@ -89,7 +89,7 @@ for i in range(num_epochs):
     lap = time.time()
     print("Processing epoch {}".format(i))
     # Now start training
-    if False:
+    if True:
         for i_batch, sample in enumerate(train_loader):
 
             train_X = sample[0]

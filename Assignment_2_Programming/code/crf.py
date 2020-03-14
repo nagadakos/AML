@@ -105,7 +105,7 @@ class CRF_NET(nn.Module):
             features = self.conv(word)
             # now decode the sequence using conv features
             #decods[i] = self.dp_infer(features)
-            decods[i] = self.crf.predict([features.reshape(self.m,-1)])
+            decods[i],_ = self.crf.predict([features.reshape(self.m,-1)])
 
         return decods
     
