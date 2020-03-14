@@ -3,10 +3,10 @@ import torch.nn as nn
 import numpy as np
 from conv import Conv
 from crf_layer import CRF_Layer
-
+from dnn_template_fullNet import comp_conv_dimensions
 class CRF_NET(nn.Module):
 
-    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=32, m=14, stride = (1,1), padding = True):
+    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=32, m=14, stride = (1,1), convNodes= 5, padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
@@ -16,6 +16,7 @@ class CRF_NET(nn.Module):
         self.input_dim = input_dim
         self.embed_dim = embed_dim
         self.num_labels = num_labels
+        self.convNodes = convNodes
         self.batch_size = batch_size
         self.use_cuda = torch.cuda.is_available()
         self.m = m
@@ -27,7 +28,9 @@ class CRF_NET(nn.Module):
         self.padding = padding
         self.cout_shape = self.get_cout_dim() # output shape of conv layer
         self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
-        print(self.cout_numel)
+        h1, w1 = comp_conv_dimensions('2d', 16,8, kernel_size, stride = stride)
+        self.embed_dim = h1*w1 * self.convNodes
+        print("Cout dims: " + str(self.embed_dim))
         
         self.init_params()
         self.batchLoss = 0
@@ -41,7 +44,8 @@ class CRF_NET(nn.Module):
         """
         Initialize trainable parameters of CRF here
         """
-        self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
+        #self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
+        self.conv = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size, stride = self.stride)
         self.W = torch.randn(self.num_labels, self.embed_dim, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
         self.crf = CRF_Layer(self.W, self.T, inSize = self.embed_dim, labelSize = self.num_labels)
@@ -71,8 +75,11 @@ class CRF_NET(nn.Module):
             # conv operation performed for one word independently to every letter
             #print(word.shape)
             #features = self.get_conv_features(word)
-            #print(X[1][i].shape, word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1).shape)
-            features = [[X[1][i], word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1)]]
+            features = self.conv(word)
+            #print(features.shape)
+            #print(X[1][i].shape, features.squeeze().reshape(word.shape[0],-1).shape)
+            #features = [[X[1][i], word[:,:,1:7, 1:4].squeeze().reshape(word.shape[0],-1)]]
+            features = [[X[1][i], features.squeeze().reshape(word.shape[0],-1)]]
             #print(len(features))
             # now decode the sequence using conv features
             grads = self.crf.forward(features)

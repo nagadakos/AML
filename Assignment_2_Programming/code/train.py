@@ -80,7 +80,6 @@ test_loader = data_utils.DataLoader(test,  # dataset to load from
 print('Loaded dataset... ')
 for i in range(num_epochs):
     print("Processing epoch {}".format(i))
-    
     # Now start training
     for i_batch, sample in enumerate(train_loader):
 
@@ -98,6 +97,7 @@ for i in range(num_epochs):
             tr_loss = crf.loss(train_X, train_Y) # Obtain the loss for the optimizer to minimize
             tr_loss.backward() # Run backward pass and accumulate gradients
             return tr_loss
+        
         tr_loss = crf.loss(train_X, train_Y)
         #opt.zero_grad() # clear the gradients
         #_ = crf.forward(sample)
@@ -119,8 +119,9 @@ for i in range(num_epochs):
                 test_X = test_X.cuda()
                 test_Y = test_Y.cuda()
             test_loss = crf.loss(test_X, test_Y)
-            print(step, tr_loss.item(), test_loss.item(),
-                       tr_loss.item() / batch_size, test_loss.item() / batch_size)
+            tr_loss = tr_loss.item() if 'Tensor' in str(type(tr_loss)) else tr_loss
+            print(step, tr_loss, test_loss.item(),
+                       tr_loss / batch_size, test_loss.item() / batch_size)
 
 			##################################################################
 			# IMPLEMENT WORD-WISE AND LETTER-WISE ACCURACY HERE

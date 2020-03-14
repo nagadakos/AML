@@ -65,7 +65,7 @@ class CRF_Layer(nn.Module):
         self.w = Parameter(W)
         self.t = Parameter(T)
         self.imgSize = inSize
-        self.objValue = 0
+        self.objValue = torch.tensor([0])
         self.gradients = 0
         self.K = labelSize
         self.C = C
