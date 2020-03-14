@@ -6,7 +6,7 @@ from crf_layer import CRF_Layer
 from dnn_template_fullNet import comp_conv_dimensions
 class CRF_NET(nn.Module):
 
-    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=32, m=14, stride = (1,1), convNodes= 5, padding = True):
+    def __init__(self, input_dim, embed_dim = 18, kernel_size=2, num_labels=27, batch_size=256, m=14, stride = (1,1), convNodes= 5, padding = True):
         """
         Linear chain CRF as in Assignment 2
         """
@@ -26,9 +26,9 @@ class CRF_NET(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        self.cout_shape = self.get_cout_dim() # output shape of conv layer
-        self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
-        h1, w1 = comp_conv_dimensions('2d', 16, 8, kernel_size, stride = stride)
+        #self.cout_shape = self.get_cout_dim() # output shape of conv layer
+        #self.cout_numel = self.cout_shape[0]*self.cout_shape[1]
+        h1, w1 = comp_conv_dimensions('2d', 16,8, kernel_size, stride = stride)
         self.embed_dim = h1*w1 * self.convNodes
         print("Cout dims: " + str(self.embed_dim))
         
@@ -44,8 +44,8 @@ class CRF_NET(nn.Module):
         """
         Initialize trainable parameters of CRF here
         """
-        self.conv = Conv(self.kernel_size, self.convNodes, stride=self.stride)
-        # self.conv = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size, stride = self.stride)
+        #self.conv = Conv(self.kernel_size, self.out_channels, padding=self.padding,stride=self.stride)
+        self.conv = nn.Conv2d(1, self.convNodes, kernel_size=self.kernel_size, stride = self.stride)
         self.W = torch.randn(self.num_labels, self.embed_dim, requires_grad=True)
         self.T = torch.randn(self.num_labels, self.num_labels, requires_grad=True)
         self.crf = CRF_Layer(self.W, self.T, inSize = self.embed_dim, labelSize = self.num_labels)
@@ -69,7 +69,8 @@ class CRF_NET(nn.Module):
         """        
         #print(len(X), X[0].shape, X[1].shape)
         batchLoss = 0
-        for i in range(self.batch_size):
+        bSize = X[0].shape[0]
+        for i in range(bSize):
             # Reshape the word to (14,1,16,8)
             word = X[0][i].reshape(self.m, 1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
@@ -94,8 +95,9 @@ class CRF_NET(nn.Module):
     # input: T: (26, 26), letter-letter transition matrix
     # output: letter_indices: (m, 1), letter labels of a word
     def predict(self, x):
-        decods = torch.zeros(self.batch_size, self.m, dtype=torch.int)
-        for i in range(self.batch_size):
+        bSize = x[0].shape[0]
+        decods = torch.zeros(bSize, self.m, dtype=torch.int)
+        for i in range(bSize):
             # Reshape the word to (14,1,16,8)
             word = x[0][i].reshape(self.m,1, self.input_dim[0],self.input_dim[1])
             # conv operation performed for one word independently to every letter
@@ -185,7 +187,10 @@ class CRF_NET(nn.Module):
 def main():
 
     model = CRF_NET((16,8), padding = False)
-    
+    data = torch.zeros(256,14,16,8)
+    labels = torch.zeros(256,14)
+    pred = model.predict([data,labels])
+    print(pred.shape)
 if __name__ == "__main__":
     main()
 
