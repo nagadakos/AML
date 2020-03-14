@@ -7,7 +7,7 @@ class Conv(nn.Module):
     """
     Convolution layer.
     """
-    def __init__(self, kernel_size, out_channels, padding=False, stride=(1, 1)):
+    def __init__(self, kernel_size, out_channels, padding=(0, 0), stride=(1, 1)):
         super(Conv, self).__init__()
         # start kernel with random init
         self.kernel_size = kernel_size
@@ -20,7 +20,21 @@ class Conv(nn.Module):
         self.kernel = torch.rand((self.num_filters, kernel_size, kernel_size),  requires_grad=True)
 
         # set padding variable
-        self.padding = padding
+        if padding:
+            try:
+                if len(padding) == 2:
+                    self.row_pad = padding[0]
+                    self.col_pad = padding[1]
+                else:
+                    assert len(padding) == 2
+            except TypeError:
+                self.row_pad = padding
+                self.col_pad = padding
+        else:
+            self.row_pad = 0
+            self.col_pad = 0
+
+        # self.padding = padding
 
         # set strides
         self.row_stride = stride[0]
@@ -29,12 +43,12 @@ class Conv(nn.Module):
         assert self.row_stride >= 1
         assert self.col_stride >= 1
 
-        self.row_pad = 0
-        self.col_pad = 0
-        self.padding = padding
-        if padding:
-            self.row_pad = kernel_size // 2
-            self.col_pad = kernel_size // 2
+        # self.row_pad = 0
+        # self.col_pad = 0
+        # self.padding = padding
+        # if padding:
+        #     self.row_pad = kernel_size // 2
+        #     self.col_pad = kernel_size // 2
 
 
 
@@ -69,9 +83,9 @@ class Conv(nn.Module):
         self.num_filters = self.kernel.shape[0]
         self.kernel_size = self.kernel.shape[1]
 
-        if self.padding:
-            self.row_pad = self.kernel_size // 2
-            self.col_pad = self.kernel_size // 2
+        # if self.padding:
+        #     self.row_pad = (self.kernel_size - 1) // 2
+        #     self.col_pad = (self.kernel_size - 1) // 2
 
 
     def forward(self, input):
@@ -87,8 +101,8 @@ class Conv(nn.Module):
         result_batch_size = input.shape[0]
 
 
-        if self.padding:
-            input = torch.nn.ZeroPad2d((self.row_pad, self.row_pad, self.col_pad, self.col_pad))(input)
+        # if self.padding:
+        input = torch.nn.ZeroPad2d((self.row_pad, self.row_pad, self.col_pad, self.col_pad))(input)
 
         result_rows = 1 + (input.shape[-2] - kernel_size) // row_stride
         result_cols = 1 + (input.shape[-1] - kernel_size) // col_stride
@@ -115,21 +129,8 @@ class Conv(nn.Module):
                                                col_stride * j: col_stride * j + kernel_size]
                                                * kernel[:, :, :],
                                                (-1, -2)) + self.bias
-                # result[:, :, i, j] = torch.sum(input[:,
-                #                                :,
-                #                                i: i + kernel_size,
-                #                                j: j + kernel_size]
-                #                                * kernel[:, :, :],
-                #                                (-1, -2)) + self.bias
 
-        # if self.padding:
-        #     result = result[:, :, self.row_pad:-self.row_pad, self.col_pad:-self.col_pad]
 
-        # if self.row_stride > 1:
-        #     result = result[:, :, ::self.row_stride, :]
-        #
-        # if self.col_stride > 1:
-        #     result = result[:, :, :, ::self.col_stride]
 
         return result
 
