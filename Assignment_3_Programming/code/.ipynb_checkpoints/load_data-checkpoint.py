@@ -38,7 +38,7 @@ def load_data(filename, batch_size):
 
             pad_data[i, 0:sample_len, :] = sample
 
-        data = torch.from_numpy(pad_data).float()
+        data = torch.from_numpy(pad_data).float().transpose(2,1)
         print('data: ', data.shape)
         label = torch.from_numpy(current_label)
         print('label: ', label.shape)
@@ -62,7 +62,7 @@ def load_data(filename, batch_size):
 
             pad_data[i,0:sample_len, :] = sample
 
-        data = torch.from_numpy(pad_data).float()
+        data = torch.from_numpy(pad_data).float().transpose(2,1)
         print('data: ', data.shape)
         label = torch.from_numpy(current_label)
         print('label: ', label.shape)

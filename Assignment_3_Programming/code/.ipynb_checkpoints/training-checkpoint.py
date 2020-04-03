@@ -2,6 +2,7 @@
 import load_data
 import torch
 import torch.nn.functional as F
+from torch.nn import CrossEntropyLoss as CrossEntropyLoss
 from torch.autograd import grad
 import torch.optim as optim
 from Classifier import LSTMClassifier
@@ -13,7 +14,7 @@ from Classifier import LSTMClassifier
 batch_size = 27
 output_size = 9   # number of class
 hidden_size = 50  # LSTM output size of each time step
-input_size = 11
+input_size = 12
 basic_epoch = 300
 Adv_epoch = 100
 Prox_epoch = 100
@@ -35,13 +36,16 @@ def train_model(model, train_iter, mode):
     total_epoch_acc = 0
     steps = 0
     model.train()
+    model2 = model
     for idx, batch in enumerate(train_iter):
         input = batch[0]
         target = batch[1]
         target = torch.autograd.Variable(target).long()
         r = 0
         optim.zero_grad()
-        prediction = model(input, r,batch_size = input.size()[0], mode = mode)
+        prediction = model2(input, r,batch_size = input.size()[0], mode = mode)
+        #print(target, prediction)
+        #print(target.shape, prediction.shape)
         loss = loss_fn(prediction, target)
         if mode == 'AdvLSTM':
             pass
@@ -103,20 +107,22 @@ train_iter, test_iter = load_data.load_data('JV_data.mat', batch_size)
 
 
 model = LSTMClassifier(batch_size, output_size, hidden_size, input_size)
-loss_fn = F.cross_entropy
-
+#loss_fn = F.cross_entropy
+loss_fn = CrossEntropyLoss()
 for epoch in range(basic_epoch):
         optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-3, weight_decay=1e-3)
         train_loss, train_acc = train_model(model, train_iter, mode = 'plain')
+        model.history[0].append(train_acc)
         val_loss, val_acc = eval_model(model, test_iter, mode ='plain')
+        model.history[1].append(val_acc)
         print(f'Epoch: {epoch+1:02}, Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Test Loss: {val_loss:3f}, Test Acc: {val_acc:.2f}%')
 
-
+model.plot(saveFile = './plots/LSTM_plain_acc.png')
 
 ''' Save and Load model'''
 
 # 1. Save the trained model from the basic LSTM
-
+model.save()
 # 2. load the saved model to Prox_model, which is an instance of LSTMClassifier
     #Prox_model = ..., or other implementations
 
