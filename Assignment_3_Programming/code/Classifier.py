@@ -45,9 +45,20 @@ class LSTMClassifier(nn.Module):
             out = toTargetSpace
 
         if mode == 'AdvLSTM':
-            pass
-              # different from mode='plain', you need to add r to the forward pass
-              # also make sure that the chain allows computing the gradient with respect to the input of LSTM
+            # different from mode='plain', you need to add r to the forward pass
+            # also make sure that the chain allows computing the gradient with respect to the input of LSTM
+            inX = self.relu(self.conv(inX))
+            self.inX = inX # store the output features of the conv layer, to compute the grad later on
+            if isinstance(r, type(inX)): # check in r is a tensor
+                inX = inX + r
+            # LSTM expects (seqLen, bSize, inputSize)
+            seqLen = inX.shape[2]
+            inX = torch.reshape(inX, (seqLen, batch_size, inX.shape[1]))
+            lstmOut, _ = self.lstm(inX)
+            #toTargetSpace = self.relu(self.linear(lstmOut.view(seqLen*batch_size,-1))) # lstm has the hidden layers for all time time, take thhe last ones as output
+            toTargetSpace = self.relu(self.linear(lstmOut[-1,:,:]))
+            out = toTargetSpace
+             
 
         if mode == 'ProxLSTM':
             pass
@@ -58,19 +69,16 @@ class LSTMClassifier(nn.Module):
         torch.save(self.state_dict(), path)
         
     def load(self, path='./models/LSTM_Plain'):
-        #self.load_state_dict(torch.load(path))
-        self = torch.load(path) 
-        return self
+        self.load_state_dict(torch.load(path))
     
-    
-    def plot(self,  figType = 'acc', saveFile = None):
+    def plot(self,  figType = 'acc', saveFile = None, label = 'plain LSTM ACC'):
         if figType == 'acc':
             fig = plt.figure()
             plt.title('Test Accuracy vs Epoch')
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             xAxis = np.arange(len(self.history[1]))+1
-            plt.plot(xAxis, self.history[1], marker = 'o', label = 'plain LSTM Acc')
+            plt.plot(xAxis, self.history[1], marker = 'o', label = label)
             plt.legend()
             if saveFile is not None:
                 plt.savefig(saveFile)
