@@ -3,97 +3,145 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import functional as F
-import matplotlib.pyplot as plt
 import ProxLSTM as pro
-import numpy as np
 
-
+torch.manual_seed(1)
 
 class LSTMClassifier(nn.Module):
-    def __init__(self, batch_size, output_size, hidden_size, input_size):
+
+    def __init__(self, batch_size, output_size, hidden_size, input_size, prox_eps = 0.1, p =0.2):
         super(LSTMClassifier, self).__init__()
-        # Class variables for measures.
-        self.accuracy = 0
-        self.trainLoss= 0
-        self.testLoss = 0
+
         self.history = [[],[]] # trainACC, testACC
+        
         self.output_size = output_size	# should be 9
-        self.hidden_size = hidden_size  #the dimension of the LSTM output layer
+        self.hidden_size = hidden_size  # the dimension of the LSTM output layer
         self.input_size = input_size	  # should be 12
-        self.kSize  = 3
-        self.stride = 3
+        self.BatchNorm = nn.BatchNorm1d(input_size) 
+        self.normalize = F.normalize
         self.oChannels = 64
-        self.conv = nn.Conv1d(in_channels= self.input_size, out_channels= self.oChannels, kernel_size= self.kSize, stride= self.stride) # feel free to change out_channels, kernel_size, stride
+        self.prox_eps = prox_eps
+        
+        # feel free to change out_channels, kernel_size, stride
+        self.conv = nn.Conv1d(in_channels= self.input_size, 
+                        out_channels= self.oChannels, kernel_size= 3, stride=1) 
         self.relu = nn.ReLU()
-        self.lstm = nn.LSTM(self.oChannels, hidden_size)
-        #self.lstm = nn.LSTMCell(self.oChannels, hidden_size)
+        self.lstm = nn.LSTMCell(self.oChannels, self.hidden_size)
+        self.drop = nn.Dropout(p=p)
+        #self.lstm = nn.LSTM(self.oChannels, self.hidden_size)
         self.linear = nn.Linear(self.hidden_size, self.output_size)
+        
+
 
 
     def forward(self, inX, r, batch_size, mode='plain'):
         # do the forward pass
         # pay attention to the order of input dimension.
         # input now is of dimension: batch_size * sequence_length * input_size
+
+
+        '''need to be implemented'''
         if mode == 'plain':
-            inX = self.relu(self.conv(inX))
-            # LSTM expects (seqLen, bSize, inputSize)
-            seqLen = inX.shape[2]
-            inX = torch.reshape(inX, (seqLen, batch_size, inX.shape[1]))
+            # chain up the layers
+            
+            inX = inX.permute(0, 2, 1) # [batch, input, seq]
+            inX = self.BatchNorm(inX)
+            #inX = self.normalize(inX, dim=2)
+            #inX = inX.permute(0, 2, 1) # [batch, input, seq]
+            inX = self.conv(inX)
+            inX = self.drop(inX)
+            inX = self.relu(inX)
+            newSeqLen = inX.shape[2]
+            
+            """
+            # nn.LSTM implementation
+            inX = inX.permute(2,0,1) # [seq, batch, input]
+            self.inX = inX
             lstmOut, _ = self.lstm(inX)
-            #toTargetSpace = self.relu(self.linear(lstmOut.view(seqLen*batch_size,-1))) # lstm has the hidden layers for all time time, take thhe last ones as output
-            toTargetSpace = self.relu(self.linear(lstmOut[-1,:,:]))
-            out = toTargetSpace
-
+            lstmOut = lstmOut[-1,:,:]
+            #lstmOut = self.linear(lstmOut[-1,:,:])
+            """
+            
+            # nn.LSTMCELL implementation:
+            
+            inX = inX.permute(2, 0, 1) # [seq, batch, input]
+            hx = torch.zeros(batch_size, self.hidden_size)/100.0
+            cx = torch.zeros(batch_size, self.hidden_size)/100.0
+            self.inX = inX
+            for i in range(newSeqLen):
+                hx, cx = self.lstm(inX[i], (hx, cx))
+                lstmOut = hx
+            
+            out = self.linear(lstmOut)
+            #out = self.relu(out)
+        
         if mode == 'AdvLSTM':
-            # different from mode='plain', you need to add r to the forward pass
+            # chain up the layers
+            # nt from mode='plain', you need to add r to the forward pass
             # also make sure that the chain allows computing the gradient with respect to the input of LSTM
-            inX = self.relu(self.conv(inX))
-            self.inX = inX # store the output features of the conv layer, to compute the grad later on
-            if isinstance(r, type(inX)): # check in r is a tensor
-                inX = inX + r
-            # LSTM expects (seqLen, bSize, inputSize)
-            seqLen = inX.shape[2]
-            inX = torch.reshape(inX, (seqLen, batch_size, inX.shape[1]))
+            inX = inX.permute(0, 2, 1) # [batch, input, seq]
+            inX = self.BatchNorm(inX)
+            #inX = self.normalize(inX, dim=2)
+            inX = self.conv(inX)
+            inX = self.drop(inX)
+            inX = self.relu(inX)
+            newSeqLen = inX.shape[2]
+            """
+            # nn.LSTM implementation
+            inX = inX.permute(2,0,1) # [seq, batch, input]
+            self.inX = inX
+            inX += r
             lstmOut, _ = self.lstm(inX)
-            #toTargetSpace = self.relu(self.linear(lstmOut.view(seqLen*batch_size,-1))) # lstm has the hidden layers for all time time, take thhe last ones as output
-            toTargetSpace = self.relu(self.linear(lstmOut[-1,:,:]))
-            out = toTargetSpace
-             
-
+            lstmOut = lstmOut[-1,:,:]
+            #lstmOut = self.linear(lstmOut[-1,:,:])
+            """
+            
+            # nn.LSTMCELL implementation:
+            inX = inX.permute(2, 0, 1) # [seq, batch, input]
+            self.inX = inX
+            inX += r
+            hx = torch.zeros(batch_size, self.hidden_size)/100.0
+            cx = torch.zeros(batch_size, self.hidden_size)/100.0
+            for i in range(newSeqLen):
+                hx, cx = self.lstm(inX[i], (hx, cx))
+                lstmOut = hx
+            
+            out = self.linear(lstmOut)
+        
         if mode == 'ProxLSTM':
-            pass
-                # chain up layers, but use ProximalLSTMCell here
+            
+            self.ProxLSTM = pro.ProximalLSTMCell(self.lstm, epsilon = self.prox_eps)
+            # layers, but use ProximalLSTMCell here
+            inX = inX.permute(0, 2, 1) # [batch, input, seq]
+            inX = self.BatchNorm(inX)
+            inX = self.conv(inX)
+            inX = self.relu(inX)
+            newSeqLen = inX.shape[2]
+            
+            """
+            # nn.LSTM implementation
+            inX = inX.permute(2,0,1) # [seq, batch, input]
+            self.inX = inX
+            inX += r
+            lstmOut, _ = self.lstm(inX)
+            lstmOut = lstmOut[-1,:,:]
+            #lstmOut = self.linear(lstmOut[-1,:,:])
+
+            """
+            # nn.LSTMCELL implementation:
+            inX = inX.permute(2, 0, 1) # [seq, batch, input]
+            self.inX = inX
+            inX += r
+            hx = torch.randn(batch_size, self.hidden_size)/100.0
+            cx = torch.randn(batch_size, self.hidden_size)/100.0
+            for i in range(newSeqLen):
+                hx, cx = self.ProxLSTM(inX[i], hx, cx)
+                lstmOut = hx
+            out = self.linear(lstmOut)
+            
         return out
     
-    def save(self,path='./models/LSTM_Plain'):
-        torch.save(self.state_dict(), path)
-        
-    def load(self, path='./models/LSTM_Plain'):
-        self.load_state_dict(torch.load(path))
     
-    def plot(self,  figType = 'acc', saveFile = None, label = 'plain LSTM ACC'):
-        if figType == 'acc':
-            fig = plt.figure()
-            plt.title('Test Accuracy vs Epoch')
-            plt.xlabel('Epochs')
-            plt.ylabel('Accuracy')
-            xAxis = np.arange(len(self.history[1]))+1
-            plt.plot(xAxis, self.history[1], marker = 'o', label = label)
-            plt.legend()
-            if saveFile is not None:
-                plt.savefig(saveFile)
-            return fig
 
-        if figType == 'lrCurve':
-            fig = plt.figure()
-            plt.title('Learning Curves')
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
-            xAxis = np.arange(len(self.history[2]))+1
-            plt.plot(xAxis, self.history[0], marker = 'o', label="Training Loss")
-            plt.plot(xAxis, self.history[1], marker = 'o', label = 'Test Loss')
-            plt.legend()
-            if saveFile is not None:
-                plt.savefig(saveFile)
-            return fig
+    
     

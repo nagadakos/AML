@@ -38,10 +38,10 @@ def load_data(filename, batch_size):
 
             pad_data[i, 0:sample_len, :] = sample
 
-        data = torch.from_numpy(pad_data).float().transpose(2,1)
-        print('data: ', data.shape)
+        data = torch.from_numpy(pad_data).float()
+        #print('data: ', data.shape)
         label = torch.from_numpy(current_label)
-        print('label: ', label.shape)
+        #print('label: ', label.shape)
         current_batch = [data, label]
         train_itr.append(current_batch)
 
@@ -62,10 +62,10 @@ def load_data(filename, batch_size):
 
             pad_data[i,0:sample_len, :] = sample
 
-        data = torch.from_numpy(pad_data).float().transpose(2,1)
-        print('data: ', data.shape)
+        data = torch.from_numpy(pad_data).float()
+        #print('data: ', data.shape)
         label = torch.from_numpy(current_label)
-        print('label: ', label.shape)
+        #print('label: ', label.shape)
         current_batch = [data, label]
         test_itr.append(current_batch)
 
