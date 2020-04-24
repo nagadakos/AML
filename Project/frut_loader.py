@@ -9,7 +9,6 @@ import random
 import sys
 from PIL import Image
 import numpy as np
-import cv2
 
 import glob
 # load image and convert to and from NumPy array
