@@ -14,7 +14,7 @@ def train_classifier(model, indata, device, lossFn, optim,  **kwargs):
     printInterval = kwargs['trainerArgs']['printInterval'] if 'trainerArgs' in kwargs.keys() else 40
     factor = 0
     totalSize, totalLoss = 0, 0
-    
+    print("Train Device is {}".format(device))
     for idx, items in enumerate(indata):
         
         # A. Forward computation input retrieval and handling
