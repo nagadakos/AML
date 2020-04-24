@@ -84,7 +84,7 @@ def main():
     #trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
     trainLoader, testLoader = load_data(bSize=bSize)
     # ---|
-    
+    print("Top level device is :".format(device))
     # Declare your model and other parameters here
     embeddingNetKwargs = dict(device=device)
     embeddingNet = eNets.ANET(**embeddingNetKwargs).to(device)
