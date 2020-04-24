@@ -104,7 +104,7 @@ def main():
     print("######### Initiating Fashion MNIST network training #########\n")
     print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
     fitArgs = {}
-    model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+    model.fit(trainLoader, testLoader, optim, device, epochs = 12, lossFunction = loss, earlyStopIdx = 0, earlyTestStopIdx = 0, saveHistory = True, savePlot= True)
 
     # Final report
     model.report()
