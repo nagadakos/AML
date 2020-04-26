@@ -37,3 +37,25 @@ class PIDX():
     recError = 1
     itemsWeightHist = 2
     tasksWeightHist  = 3
+    
+class EIDX():  
+    # This detersmines the number of columns in the history attribute of each 
+    # reggression model
+    logSize     = 4
+    predLogSize = 4  # fill with zeros first 3 cols for plotting compatibility
+
+    # Train phase metrics
+    trainRecErr = 0
+    trainLoss   = 1
+
+    # Test phase metrics
+    testRecErr = 2
+    testLoss   = 3
+
+    # Prediction phase metrics
+    predRecErr  = 2
+    predLoss = 3
+
+    # Index of various lists
+    ITEMS  = 0
+    TASKS = 1

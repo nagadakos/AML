@@ -7,8 +7,10 @@ import torch.nn.functional as F
 import torch.optim as optm
 import sys as sys
 from classifier_template import ClassifierFrame
+from autoencoder_template import AutoEncoderFrame
 import embedding_nets as eNets
 from frut_loader import  Fruits, load_dataset
+from plotter import display_tensor_image
 import os
 import argparse
 dir_path   = os.path.dirname(os.path.realpath(__file__))
@@ -22,7 +24,7 @@ device  = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # ========================================================================================================================
 # Functions and Network Template
 # ========================================================================================================================
-def load_data(dataPackagePath = None, bSize = 32):
+def load_data(dataPackagePath = None, bSize = 32, isFruitSamples = False):
     # bundle common args to the Dataloader module as a kewword list.
     # pin_memory reserves memory to act as a buffer for cuda memcopy 
     # operations
@@ -40,7 +42,10 @@ def load_data(dataPackagePath = None, bSize = 32):
     # Load  PyTorch data set
     trainSet = Fruits(inputs= [data[i] for i in [0,1,4,5]])
     testSet  = Fruits(inputs= [data[i] for i in [2,3,6,7]], mode = 'test')
-
+    # If this is selected, return just the trai ndata. It contains one sample from each fruit category, its class
+    # labellded by its index, that is element at i=0 is class 0 etc. Use to generate new fruit as mixtures for existing ones!
+    if isFruitSamples:
+        return torch.from_numpy(data[0]).permute(0,3,1,2).float()
     # Create a PyTorch Dataloader
     trainLoader = torch.utils.data.DataLoader(trainSet, batch_size = bSize, **comArgs )
     testLoader = torch.utils.data.DataLoader(testSet, batch_size = bSize, **comArgs)
@@ -81,34 +86,70 @@ def main():
     lr, m , bSize, epochs = parse_args()
     # Load data, initialize model and optimizer!
     # Use this for debugg, loads a tiny amount of dummy data!
-    #trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
-    trainLoader, testLoader = load_data(bSize=bSize)
+    trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
+    #trainLoader, testLoader = load_data(bSize=bSize)
     # ---|
-    print("Top level device is :".format(device))
-    # Declare your model and other parameters here
+    
+    if False:
+        print("Top level device is :{}".format(device))
+        # Declare your model and other parameters here
+        embeddingNetKwargs = dict(device=device)
+        embeddingNet = eNets.ANET(**embeddingNetKwargs).to(device)
+        loss = nn.CrossEntropyLoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+        # ---|
+
+        # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
+        templateKwargs = dict(lr=lr, momnt=m, optim='SGD', loss = str(type(loss)).split('.')[-1][:-2])
+        kwargs = dict(templateKwargs=templateKwargs, encoderKwargs=embeddingNetKwargs)
+        # ---|
+
+        # Instantiate the framework with the selected architecture, labeling options etc 
+        model = ClassifierFrame(embeddingNet, **kwargs)
+        optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
+        # ---|
+
+        print("######### Initiating Fashion MNIST network training #########\n")
+        print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
+        fitArgs = {}
+        model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+
+        # Final report
+        model.report()
+
+    # ********************
+    # Generate New Fruits!
+    # ********************
+    
+     # Declare your model and other parameters here
     embeddingNetKwargs = dict(device=device)
-    embeddingNet = eNets.ANET(**embeddingNetKwargs).to(device)
-    loss = nn.CrossEntropyLoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+    embeddingNet = eNets.BasicEncoder(**embeddingNetKwargs).to(device)
+    loss = nn.MSELoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
     # ---|
     
     # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
-    templateKwargs = dict(lr=lr, momnt=m, optim='SGD', loss = str(type(loss)).split('.')[-1][:-2])
+    templateKwargs = dict(lr=lr, momnt=m, optim='SGD', loss = str(type(loss)).split('.')[-1][:-2], targetApp= 'Fruit_Generation')
     kwargs = dict(templateKwargs=templateKwargs, encoderKwargs=embeddingNetKwargs)
     # ---|
     
     # Instantiate the framework with the selected architecture, labeling options etc 
-    model = ClassifierFrame(embeddingNet, **kwargs)
+    model = AutoEncoderFrame(embeddingNet, **kwargs)
     optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
     # ---|
     
-    print("######### Initiating Fashion MNIST network training #########\n")
+    print("######### Initiating Basic Autoencoder Network Training #########\n")
     print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
     fitArgs = {}
     model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
-
-    # Final report
-    model.report()
-
+    
+    # Generate Data
+    fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
+    samples = [fruitSamples[0], fruitSamples[16]]
+    model.generate(samples)
+    #display_tensor_image(samples[0].astype('int'))
+    
+    
+    
+    
 # Define behavior if this module is the main executable. Standard code.
 if __name__ == '__main__':
     main()

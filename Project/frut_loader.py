@@ -24,6 +24,7 @@ data_path_train = os.path.join(dir_path, "Data", "fruits-360_dataset", "fruits-3
 data_path_test = os.path.join(dir_path, "Data", "fruits-360_dataset", "fruits-360", "Test")
 sys.path.insert(0, data_path)
 
+
 # =================================================================================================================
 # Class Declaration
 # =================================================================================================================
@@ -224,7 +225,8 @@ def load_dataset(data_package_path = None, train_path = None, test_path = None )
         print("{:.2f} Loaded data.".format(t1 - t0))
 
     return train_x, train_y, test_x, test_y, train_mean, train_std, test_mean, test_std
- 
+
+
 #=================================================================
 # Main
 # ================================================================

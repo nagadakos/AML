@@ -5,6 +5,7 @@ from os.path import isdir, join, isfile
 from os import listdir
 import fnmatch
 import re
+import torch.nn as nn
 from dateutil.parser import parse
 import matplotlib.pyplot as plt
 from random import randint
@@ -13,6 +14,48 @@ import numpy as np
 from itertools import cycle
 from indexes import CIDX as cidx
 import math
+
+# -------------------------------------------------
+
+class Flatten(nn.Module):
+    def forward(self, inp):
+        return inp.view(inp.size(0), -1)
+
+# -------------------------------------------------
+class shapedUnFlatten(nn.Module):
+    def __init__(self, channels = 1, height = 1, width = 1):
+        super(shapedUnFlatten, self).__init__()
+        self.channels = channels
+        self.height = height
+        self.width = width
+
+    def forward(self, inp):
+        # print(inp.shape)
+        # red = inp.view(inp.size(0), -1, 58 , 58)
+        # print(red.shape)
+        # return red
+        return inp.view(inp.size(0), self.channels, self.height, self.width)
+# -------------------------------------------------
+class UnFlatten(nn.Module):
+
+    def forward(self, inp):
+        return inp.view(inp.size(0), -1, 1, 1)
+
+# -------------------------------------------------
+# Layer for debugging nn.Sequential packages
+class Print(nn.Module):
+    def __init__(self, enable = False, div=False):
+        super(Print, self).__init__()
+        self.div    = div
+        self.enable = enable
+
+    def forward(self, x):
+        if self.enable:
+            if self.div:
+                print("--------------")
+            print(x.shape)
+        return x
+# -------------------------------------------------
 
 def plot(history, eps = None, train_test=1, figType = 'acc', saveFile = None, title='Test Accuracy vs Epoch'):
     if figType == 'acc':
@@ -287,6 +330,93 @@ def comp_conv_dimensions(layerType, height, width, kSize, depth = 0, padding=0, 
         return [heightOut, widthOut] if dims != 3 else [depth,height, width]
     else:
         return  dict(height=heightOut, width = widthOut) if dims != 3 else dict(depth=depthOut, height=heightOut, width = widthOut)
+
+# ===================================================================================================================
+# SCORES
+# ===================================================================================================================
+
+def compute_inception_score(lDist, mDist, verbose = False):
+    score = 0
+    # Add epsilon to marginal distribution(collection, really) to avoid inf
+    mDist += 1
+    # Normalize marginal, so it becomes a proper distribtuion.
+    marginal = mDist / mDist.sum(dim=0)
+    # Compute KL Divergence P(x) then Q(x)
+    KLDivergence = torch.sum(lDist * (torch.log(lDist) - torch.log(marginal)), dim = 1)
+    # score2 = entropy(lDist, mDist.unsqueeze(0).expand(lDist.size(0),-1,-1))
+    score = torch.exp(KLDivergence.mean(dim=0))
+    if verbose:
+        print("Marginal p(y):", marginal)
+        print("Marginal p(y):", mDist)
+        print("label Distribution p(y|x):", lDist[:,:,1])
+    return score
+
+# ===================================================================================================================
+# VISUALIZATION + SAVE N LOAD
+# ===================================================================================================================
+
+def save_tensor(tensor, delimeter = ' ', filePath = None):
+    ''' Description: This function saves a tensor to a txt file. It first copies
+                     it to host memory, turn it into a numpy array and dump it
+                     into a txt file. This is faster that a for loop by an order
+                     of magnitude. Original tensor stays in GPU.
+        Arguments:  tensor (p Tensor): The tensor containing the results
+                    to be written.
+                    delimeter (String): A string thatwill separate data in txt
+                    filePath (String): Target path to save file
+    '''
+    a = tensor.cpu()
+    a = a.numpy()
+    np.savetxt(filePath, a,  fmt="%.4f", delimiter=delimeter)
+ 
+
+# --------------------------------------------------------------------------------------------------------------------
+
+class BCE_KLD_CompoundLoss(nn.Module):
+    """ Description: see Appendix B from VAE paper: Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+                     TODO: angle loss is an input currently. Has to become a normal loss. Talk to Aswin about
+                     it.
+    """
+    def __init__(self):
+        super(BCE_KLD_CompoundLoss, self).__init__()
+
+    def forward(self, x, target, recon_x, mu, logvar, z, angleLoss=0, weights= None):
+        if weights is not None:
+            weights.detach()
+        BCE = F.binary_cross_entropy(recon_x, x, reduction = 'none')
+        BCE = torch.sum(BCE, dim=tuple(range(2, len(BCE.size()))))
+        KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        return BCE+KLD+angleLoss
+
+    def get_BCE(recon_x,x, size_average = False):
+        BCE = F.binary_cross_entropy(recon_x, x)
+        return BCE
+
+    def get_KLD(mu, logvar):
+        KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        return KLD
+# ==================================================================================================
+# REGRESSION LOSSES
+# ==================================================================================================
+
+class MSEReconstructionLoss(nn.Module):
+    ''' DESCRIPTION: THis function computes the mean square error between inut and target making sure
+                     the target is sxpanded to the required dimensions
+        ARGUMENTS: x: (Tensor) Input Tensor of shape either [Batch x N DImensionx Channel x Height x Width]
+                   target: (Tensor) Target Tensor of shape [Batch x  Channel x Height x Width]
+    '''
+    def __init__(self):
+        super(MSEReconstructionLoss, self).__init__()
+        self.loss = nn.MSELoss()
+
+    def forward(self,x,target):
+        # print(x.shape, target.shape)
+        if len(x.shape) > len(target.shape):
+            target = target.unsqueeze(1).expand_as(x)
+        else:
+            target = target.expand_as(x)
+        loss = self.loss(x,target)
+        return loss
 # -------------------------------------------------------------------------------------------------------
 #
 # -------------------------------------------------------------------------------------------------------
