@@ -129,6 +129,12 @@ class AutoEncoderFrame(nn.Module):
         save_image(genData,'{}.png'.format(saveSamplePath))
         
         return genData
+
+    #-------------------------------------------------------------------------------------------------------------------------------
+    def print_layers(self):
+        l = [module for module in self.encoder.modules() if type(module) != nn.Sequential]
+        print(l)
+        return l
     #-------------------------------------------------------------------------------------------------------------------------------
 
     def get_model_descr(self):

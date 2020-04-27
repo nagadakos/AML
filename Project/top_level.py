@@ -86,8 +86,8 @@ def main():
     lr, m , bSize, epochs = parse_args()
     # Load data, initialize model and optimizer!
     # Use this for debugg, loads a tiny amount of dummy data!
-    trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
-    #trainLoader, testLoader = load_data(bSize=bSize)
+    #trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
+    trainLoader, testLoader = load_data(bSize=bSize)
     # ---|
     
     if False:
@@ -139,7 +139,8 @@ def main():
     print("######### Initiating Basic Autoencoder Network Training #########\n")
     print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
     fitArgs = {}
-    model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+    model.print_layers()
+    model.fit(trainLoader, testLoader, optim, device, epochs = 12, lossFunction = loss, earlyStopIdx = 0, earlyTestStopIdx = 0, saveHistory = True, savePlot= True)
     
     # Generate Data
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
