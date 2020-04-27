@@ -29,7 +29,7 @@ sys.path.insert(0, data_path)
 # Class Declaration
 # =================================================================================================================
 class Fruits(Dataset):
-    def __init__(self, inputs= None, mode = 'train', dataDir=None, csv_file=None, valPerCent =0.1):
+    def __init__(self, inputs= None, mode = 'train', dataDir=None, csv_file=None, valPerCent =0.1, normalize= True):
         
         if inputs:
             if isinstance(inputs, list):
@@ -58,6 +58,8 @@ class Fruits(Dataset):
         self.mode = mode
         self.N = self.data.shape[0]
         self.data=self.data.permute(0,3,1,2)
+        if normalize:
+            self.data /= 255
         #self.rand_idx = [ i for i in range(0, self.num_data)]
         #random.Random(123).shuffle(self.rand_idx)
         print("Data Loaded: {}. Data instance shape is: {}\n".format( self.N, self.data[0].shape))
