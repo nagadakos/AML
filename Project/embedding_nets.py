@@ -468,6 +468,7 @@ class BasicEncoder (nn.Module):
         self.numOfConvLayers = len(dims['nodes'])
         self.latentDim = dims['latentDim']
         self.verbose = verbose
+        self.device = device
         # Layer Dimensions computation
         # Compute  layer dims after 1nd conv layer, automatically.
         dataChannels1 = '2d' # 3d for 3 dimensional data or 2d. Used to correctly comptue the output dimensions of conv and pool layers!
@@ -494,6 +495,7 @@ class BasicEncoder (nn.Module):
         # Layers Declaration
         self.convLayers  = [nn.Conv2d(dataSize[0], dims['nodes'][0], kernel_size=dims['kSizes'][0], stride = dims['strides'][0])]
         self.convLayers += [nn.Conv2d(dims['nodes'][i-1], dims['nodes'][i], kernel_size=dims['kSizes'][i], stride = dims['strides'][i]) for i in range(1,self.numOfConvLayers)]
+        self.convLayers = nn.ModuleList(self.convLayers)
         #self.conv1 = nn.Conv2d(dataSize[0], dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'], stride = dims['conv1']['stride'])
         #self.conv2 = nn.Conv2d(dims['conv1']['nodes'], dims['conv2']['nodes'], kernel_size=dims['conv2']['kSize'], stride = dims['conv2']['stride'])
         self.toLatentSpace = nn.Linear(self.linearSize, dims['latentDim'])
