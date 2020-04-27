@@ -570,7 +570,7 @@ class BasicEncoder (nn.Module):
             for i in range(len(sample)):
                 sample[i] = sample[i].unsqueeze(0)
         # Preassign a tensor to hold the sum of the samples representations, the average of which will be used to generate a new fruit!
-        genData = torch.zeros((sample[0].shape[0], self.latentDim)) 
+        genData = torch.zeros((sample[0].shape[0], self.latentDim)).to(self.device) 
         # Get a representation for all samples, average it and decode this average to get a new synthesized attempt!
         for i in range(len(sample)):
             genData += self.encode(sample[i])
