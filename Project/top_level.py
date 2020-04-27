@@ -127,13 +127,14 @@ def main():
     # ---|
     
     # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
-    templateKwargs = dict(lr=lr, momnt=m, optim='SGD', loss = str(type(loss)).split('.')[-1][:-2], targetApp= 'Fruit_Generation')
+    templateKwargs = dict(lr=lr, momnt=m, optim='ADAM', loss = str(type(loss)).split('.')[-1][:-2], targetApp= 'Fruit_Generation')
     kwargs = dict(templateKwargs=templateKwargs, encoderKwargs=embeddingNetKwargs)
     # ---|
     
     # Instantiate the framework with the selected architecture, labeling options etc 
     model = AutoEncoderFrame(embeddingNet, **kwargs)
-    optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
+    #optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
+    optim = optm.Adam(model.encoder.parameters(), lr=lr)
     # ---|
     
     print("######### Initiating Basic Autoencoder Network Training #########\n")
