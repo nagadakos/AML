@@ -493,6 +493,7 @@ class BasicEncoder (nn.Module):
         # Similar to Fischer prize building blocks!
         
         # Layers Declaration
+        #self.bNorm = nn.BatchNorm2d(dataSize[0])
         self.convLayers  = [nn.Conv2d(dataSize[0], dims['nodes'][0], kernel_size=dims['kSizes'][0], stride = dims['strides'][0])]
         self.convLayers += [nn.Conv2d(dims['nodes'][i-1], dims['nodes'][i], kernel_size=dims['kSizes'][i], stride = dims['strides'][i]) for i in range(1,self.numOfConvLayers)]
         self.convLayers = nn.ModuleList(self.convLayers)
@@ -539,6 +540,7 @@ class BasicEncoder (nn.Module):
         return [x, decodedX]
     # ------------------
     def encode(self,x):
+        #x = self.bNorm(x)
         for i in range(len(self.convLayers)):
             x = F.relu(self.convLayers[i](x))
             #print(x.shape)

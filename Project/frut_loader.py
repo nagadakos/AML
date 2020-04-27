@@ -29,7 +29,8 @@ sys.path.insert(0, data_path)
 # Class Declaration
 # =================================================================================================================
 class Fruits(Dataset):
-    def __init__(self, inputs= None, mode = 'train', dataDir=None, csv_file=None, valPerCent =0.1, normalize = True):
+    
+    def __init__(self, inputs= None, mode = 'train', dataDir=None, csv_file=None, valPerCent =0.1, normalize= True):
         
         if inputs:
             if isinstance(inputs, list):
