@@ -144,7 +144,7 @@ def main():
     # Generate Data
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
     samples = [fruitSamples[0], fruitSamples[16]]
-    model.generate(samples)
+    model.generate(samples, saveTitle='GenSamplesRemote')
     #display_tensor_image(samples[0].astype('int'))
     
     
