@@ -67,35 +67,47 @@ def parse_args():
     parser.add_argument('--m',     type = float,metavar = 'float',default= 0,     help="Momentum for the optimizer, if any.")
     parser.add_argument('--bSize', type = int,  metavar = 'bSize',default=32,     help="Batch size of data loader, in terms of samples. a size of 32 means 32 images for an optimization step.")
     parser.add_argument('--epochs',type = int,  metavar = 'e',    default=12   ,  help="Number of training epochs. One epoch is to perform an optimization step over every sample, once.")
+    parser.add_argument('--debug', type = bool,  metavar = 'debug',default=False,  help="Sets debug mode. Training, testing will orceed for only 1 batch and stop.")
     # Parse the input from the console. To access a specific arg-> dim = args.dim
     args = parser.parse_args()
-    lr, m, bSize, epochs = args.lr, args.m, args.bSize, args.epochs
+    lr, m, bSize, epochs, debug = args.lr, args.m, args.bSize, args.epochs, args.debug
     # Sanitize input
     m = m if (m>0 and m <1) else 0 
     lr = lr if lr < 1 else 0.1
     # It is standard in larger project to return a dictionary instead of a myriad of args like:
     # return {'lr':lr,'m':m,'bSize':bbSize,'epochs':epochs}
-    return lr, m , bSize, epochs
+    return lr, m , bSize, epochs, debug
 
 # ================================================================================================================================
 # Execution
 # ================================================================================================================================
 def main():
+    
     # Handle command line input and load data
     # Get keyboard arguments, if any! (Try the dictionary approach in the code aboe for some practice!)
-    lr, m , bSize, epochs = parse_args()
+    lr, m , bSize, epochs, debug = parse_args()
     # Load data, initialize model and optimizer!
     # Use this for debugg, loads a tiny amount of dummy data!
-    trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
-    #trainLoader, testLoader = load_data(bSize=bSize)
+    if debug:
+        trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
+        fitArgs = dict(epochs = 1, earlyStopIdx = 1, earlyTestStopIdx = 1)
+    else:
+        trainLoader, testLoader = load_data(bSize=bSize)
+        fitArgs = dict(epochs = 6, earlyStopIdx = 0, earlyTestStopIdx = 0)
     # ---|
     
-    if False:
+    # ********************
+    # Classify Fruits!
+    # ********************
+    
+    trainClassifier = False
+    if trainClassifier:
         print("Top level device is :{}".format(device))
         # Declare your model and other parameters here
         embeddingNetKwargs = dict(device=device)
         embeddingNet = eNets.ANET(**embeddingNetKwargs).to(device)
         loss = nn.CrossEntropyLoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+        fitArgs['lossFunnction'] = loss
         # ---|
 
         # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
@@ -110,8 +122,7 @@ def main():
 
         print("######### Initiating Fashion MNIST network training #########\n")
         print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
-        fitArgs = {}
-        model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+        model.fit(trainLoader, testLoader, optim, device, **fitArgs)
 
         # Final report
         model.report()
@@ -120,10 +131,11 @@ def main():
     # Generate New Fruits!
     # ********************
     
-     # Declare your model and other parameters here
+    # Declare your model and other parameters here
     embeddingNetKwargs = dict(device=device)
     embeddingNet = eNets.BasicEncoder(**embeddingNetKwargs).to(device)
     loss = nn.MSELoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+    fitArgs['lossFunnction'] = loss
     # ---|
     
     # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
@@ -139,9 +151,9 @@ def main():
     
     print("######### Initiating Basic Autoencoder Network Training #########\n")
     print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
-    fitArgs = {}
-    model.print_layers()
-    model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+    #model.print_layers()
+    #model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
+    model.fit(trainLoader, testLoader, optim, device, **fitArgs)
     
     # Generate Data (fruitSamples are already floats normilized to 0-1 range)
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
