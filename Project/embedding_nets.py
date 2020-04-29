@@ -493,7 +493,6 @@ class BasicEncoder (nn.Module):
         # Similar to Fischer prize building blocks!
         
         # Layers Declaration
-        #self.bNorm = nn.BatchNorm2d(dataSize[0])
         self.convLayers  = [nn.Conv2d(dataSize[0], dims['nodes'][0], kernel_size=dims['kSizes'][0], stride = dims['strides'][0])]
         self.convLayers += [nn.Conv2d(dims['nodes'][i-1], dims['nodes'][i], kernel_size=dims['kSizes'][i], stride = dims['strides'][i]) for i in range(1,self.numOfConvLayers)]
         self.convLayers = nn.ModuleList(self.convLayers)
@@ -540,7 +539,6 @@ class BasicEncoder (nn.Module):
         return [x, decodedX]
     # ------------------
     def encode(self,x):
-        #x = self.bNorm(x)
         for i in range(len(self.convLayers)):
             x = F.relu(self.convLayers[i](x))
             #print(x.shape)
@@ -558,27 +556,38 @@ class BasicEncoder (nn.Module):
     def predict(self, x, **kwargs):
         return self.forward(x)
     # ------------------
-    def generate(self, sample,  **kwargs):
+    def generate(self, sample=None, bSize=32,  **kwargs):
         """ DESCRIPTION: This function will generate an image based on an input ssample, usually encoded from the forward sample.
                          Sample can be a list of samples, where their average will be used to generate the final image. 
             ARGUMENTS: sample (list of tensors): Hold the samples to be used to generate new fruits from, can be any number
-                                                 and it should be in ether in [batachSize,channels, h,w] or(channels,h,w) format   .
+                                                 and it should be in ether in [batachSize,channels, h,w] or(channels,h,w) format .
+                                                 If NONE, function will generate new data from sampling the latent space.
+                       bSize (int): Batch size then the function generates data by sampling from latent space only. IS NOT USED when
+                                    generating from input images.
+            RETURNS: genData (tensor): Returned tensor shame shape as the original input, the decoded output that is either:
+                                       a) The average represnetation of the provided samples, or if NO sample is given,
+                                       b) The decoded output of a random latent space sample
         """
-        # Turn input to list, if not already
-        if not isinstance(sample, list):
-            sample = [sample]
-        # If input is not in [batachSize,channels, h,w] format, and its just an image like (channels,h,w) add the batch dimension
-        if len(sample[0].shape) < 4:
+        if sample is not None:
+            # Turn input to list, if not already
+            if not isinstance(sample, list):
+                sample = [sample]
+            # If input is not in [batachSize,channels, h,w] format, and its just an image like (channels,h,w) add the batch dimension
+            if len(sample[0].shape) < 4:
+                for i in range(len(sample)):
+                    sample[i] = sample[i].unsqueeze(0)
+            # Preassign a tensor to hold the sum of the samples representations, the average of which will be used to generate a new fruit!
+            genData = torch.zeros((sample[0].shape[0], self.latentDim)) 
+            # Get a representation for all samples, average it and decode this average to get a new synthesized attempt!
             for i in range(len(sample)):
-                sample[i] = sample[i].unsqueeze(0)
-        # Preassign a tensor to hold the sum of the samples representations, the average of which will be used to generate a new fruit!
-        genData = torch.zeros((sample[0].shape[0], self.latentDim)).to(self.device) 
-        # Get a representation for all samples, average it and decode this average to get a new synthesized attempt!
-        for i in range(len(sample)):
-            genData += self.encode(sample[i])
-        genData = self.decode(genData/len(sample))
+                genData += self.encode(sample[i])
+            genData = self.decode(genData/len(sample))
+            latentSample = 0
+        else: #if latent sample is required
+            latentSample = torch.rand((bSize, self.latentDim))
+            genData = self.decode(latentSample)
             
-        return genData
+        return genData, latentSample
     # ------------------
     def report(self, **kwargs):
         """ DESCRIPTION: This customizable function serves a printout report for the networks progress, details etc.

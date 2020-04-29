@@ -119,25 +119,28 @@ class AutoEncoderFrame(nn.Module):
     def generate(self, inExamples= None, fromLatentSpaceSample= False, saveFolder= None, saveTitle='GenSamples',**kwargs):
         
         if inExamples is not None:
-            genData = self.encoder.generate(inExamples, **kwargs)
-       
+            genData, _ = self.encoder.generate(inExamples, **kwargs)
+            printMat = torch.cat(inExamples, 0) 
+            # Make the print image matrix to feed into mage_grid. WIll print the images in the following manner:
+            # The first m rows will be the inExample images. The bottom row will be the generated result. Each row will have
+            # batchSize images. The idea is that more images can fit the screen horizontally. Remember inExamples can be a list.
+            print(printMat.shape)
+            printMat = torch.cat([printMat, genData], 0)
+        else:
+            # In this caae the printMatrix is simply the decoded latent space samples. Untill we find a way to display differently sized
+            # images together.
+            genData, latentSample = self.encoder.generate(inExamples, **kwargs)
+            printMat = genData
         if saveFolder is not None:
             saveSampleFile = os.path.join(saveFolder, 'Samples')
         else:
             saveSampleFile = self.saveSamplesFolder
         if not os.path.exists(saveSampleFile):
             os.makedirs(saveSampleFile)
-        print(inExamples[0].shape, genData.shape)
         
-        # Make the print image matrix to feed into mage_grid. WIll print the images in the following manner:
-        # The first m rows will be the inExample images. The bottom row will be the generated result. Each row will have
-        # batchSize images. The idea is that more images can fit the screen horizontally. Remember inExamples can be a list.
+        
         imgsPerRow = genData.shape[0]
-        printMat = torch.cat(inExamples, 0) 
-        printMat = torch.cat([printMat, genData], 0)
-        print(printMat.shape)
         gridImg  = make_grid(printMat, nrow = imgsPerRow)
-        
         saveSamplePath =os.path.join(saveSampleFile,saveTitle)
         save_image(gridImg,'{}.png'.format(saveSamplePath), nrow = imgsPerRow)
         '''
