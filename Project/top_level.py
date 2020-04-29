@@ -158,7 +158,7 @@ def main():
     
     # Generate Data (fruitSamples are already floats normilized to 0-1 range)
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
-    genExamples = [fruitSamples[0:32], fruitSamples[32:64]]
+    genExamples = [fruitSamples[0:32], fruitSamples[32:64], fruitSamples[64:96]]
     model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples')
     model.generate(saveTitle='GenFruitFromLatentSample')
     
