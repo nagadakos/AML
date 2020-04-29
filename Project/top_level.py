@@ -45,7 +45,7 @@ def load_data(dataPackagePath = None, bSize = 32, isFruitSamples = False):
     # If this is selected, return just the trai ndata. It contains one sample from each fruit category, its class
     # labellded by its index, that is element at i=0 is class 0 etc. Use to generate new fruit as mixtures for existing ones!
     if isFruitSamples:
-        return torch.from_numpy(data[0]).permute(0,3,1,2).float().to(device)/255
+        return torch.from_numpy(data[0]).contiguous().permute(0,3,1,2).float().to(device)/255
     # Create a PyTorch Dataloader
     trainLoader = torch.utils.data.DataLoader(trainSet, batch_size = bSize, **comArgs )
     testLoader = torch.utils.data.DataLoader(testSet, batch_size = bSize, **comArgs)
@@ -157,7 +157,6 @@ def main():
     
     # Generate Data (fruitSamples are already floats normilized to 0-1 range)
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
-    samples = [fruitSamples[0], fruitSamples[16]]
     genExamples = [fruitSamples[0:32], fruitSamples[32:64]]
     model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples')
     model.generate(saveTitle='GenFruitFromLatentSample')

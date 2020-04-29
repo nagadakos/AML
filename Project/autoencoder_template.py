@@ -119,7 +119,7 @@ class AutoEncoderFrame(nn.Module):
     def generate(self, inExamples= None, fromLatentSpaceSample= False, saveFolder= None, saveTitle='GenSamples',**kwargs):
         
         if inExamples is not None:
-            genData, _ = self.encoder.generate(inExamples, **kwargs)
+            genData, _ = self.encoder.generate([i.to(self.encoder.device) for i in inExamples], **kwargs)
             printMat = torch.cat(inExamples, 0) 
             # Make the print image matrix to feed into mage_grid. WIll print the images in the following manner:
             # The first m rows will be the inExample images. The bottom row will be the generated result. Each row will have
