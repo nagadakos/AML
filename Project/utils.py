@@ -56,7 +56,14 @@ class Print(nn.Module):
             print(x.shape)
         return x
 # -------------------------------------------------
-
+def show(img):
+    ''' DESCRIPTION: THis function will display a tensor image of format(C,H,W) which is the numpy format.
+    '''
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
+    
+# -------------------------------------------------
+    
 def plot(history, eps = None, train_test=1, figType = 'acc', saveFile = None, title='Test Accuracy vs Epoch'):
     if figType == 'acc':
         fig = plt.figure(figsize=(10, 6), dpi=200)

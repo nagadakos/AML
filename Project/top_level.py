@@ -45,7 +45,7 @@ def load_data(dataPackagePath = None, bSize = 32, isFruitSamples = False):
     # If this is selected, return just the trai ndata. It contains one sample from each fruit category, its class
     # labellded by its index, that is element at i=0 is class 0 etc. Use to generate new fruit as mixtures for existing ones!
     if isFruitSamples:
-        return torch.from_numpy(data[0]).permute(0,3,1,2).float().to(device)
+        return torch.from_numpy(data[0]).permute(0,3,1,2).float().to(device)/255
     # Create a PyTorch Dataloader
     trainLoader = torch.utils.data.DataLoader(trainSet, batch_size = bSize, **comArgs )
     testLoader = torch.utils.data.DataLoader(testSet, batch_size = bSize, **comArgs)
@@ -86,8 +86,8 @@ def main():
     lr, m , bSize, epochs = parse_args()
     # Load data, initialize model and optimizer!
     # Use this for debugg, loads a tiny amount of dummy data!
-    #trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
-    trainLoader, testLoader = load_data(bSize=bSize)
+    trainLoader, testLoader = load_data(dataPackagePath = os.path.join(dir_path, 'Data','dummy.npz'),  bSize=bSize)
+    #trainLoader, testLoader = load_data(bSize=bSize)
     # ---|
     
     if False:
@@ -141,12 +141,13 @@ def main():
     print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
     fitArgs = {}
     model.print_layers()
-    model.fit(trainLoader, testLoader, optim, device, epochs = 12, lossFunction = loss, earlyStopIdx = 0, earlyTestStopIdx = 0, saveHistory = True, savePlot= True)
+    model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
     
-    # Generate Data
+    # Generate Data (fruitSamples are already floats normilized to 0-1 range)
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
     samples = [fruitSamples[0], fruitSamples[16]]
-    model.generate(samples, saveTitle='GenSamplesRemote')
+    genExamples = [fruitSamples[0:32], fruitSamples[32:64]]
+    model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples')
     #display_tensor_image(samples[0].astype('int'))
     
     

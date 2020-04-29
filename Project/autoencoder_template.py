@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.optim import lr_scheduler
-from torchvision.utils import save_image
+from torchvision.utils import save_image, make_grid
 import matplotlib.pyplot as plt
 import copy
 import sys
@@ -115,8 +115,11 @@ class AutoEncoderFrame(nn.Module):
     def get_parameters(self):
         return self.encoder.get_parameters()
     
-    def generate(self, *args, saveFolder= None, saveTitle='GenSamples',**kwargs):
-        genData = self.encoder.generate(*args, **kwargs)
+    #-------------------------------------------------------------------------------------------------------------------------------
+    def generate(self, inExamples= None, fromLatentSpaceSample= False, saveFolder= None, saveTitle='GenSamples',**kwargs):
+        
+        if inExamples is not None:
+            genData = self.encoder.generate(inExamples, **kwargs)
        
         if saveFolder is not None:
             saveSampleFile = os.path.join(saveFolder, 'Samples')
@@ -124,9 +127,39 @@ class AutoEncoderFrame(nn.Module):
             saveSampleFile = self.saveSamplesFolder
         if not os.path.exists(saveSampleFile):
             os.makedirs(saveSampleFile)
-        saveSamplePath =os.path.join(saveSampleFile,saveTitle)
+        print(inExamples[0].shape, genData.shape)
         
-        save_image(genData,'{}.png'.format(saveSamplePath))
+        # Make the print image matrix to feed into mage_grid. WIll print the images in the following manner:
+        # The first m rows will be the inExample images. The bottom row will be the generated result. Each row will have
+        # batchSize images. The idea is that more images can fit the screen horizontally. Remember inExamples can be a list.
+        imgsPerRow = genData.shape[0]
+        printMat = torch.cat(inExamples, 0) 
+        printMat = torch.cat([printMat, genData], 0)
+        print(printMat.shape)
+        gridImg  = make_grid(printMat, nrow = imgsPerRow)
+        
+        saveSamplePath =os.path.join(saveSampleFile,saveTitle)
+        save_image(gridImg,'{}.png'.format(saveSamplePath), nrow = imgsPerRow)
+        '''
+        for c in range(genData):
+            sampleC = sample[:,:,c,:,:].view(-1,2,1,self.dataShape[0],self.dataShape[1])
+            # sample = sample[:,:,0,:,:].view(-1,2,0,28,28)
+            print("Reshaped sample shape: {}".format(sample.shape))
+            img_grids = [make_grid(sampleC[:,v,:,:,:], nrow=stepSize) for v in range(self.numOfVae)]
+            print("Image grid  shape: {},{}".format( len(img_grids),img_grids[0].shape))
+            # print(img_grids[0][0])
+            catted = torch.cat(img_grids, 1)
+            print("Catteed  shape: {}".format( catted.shape))
+            title = 'sampleZ' + 'channel-' + str(c)
+            saveSamplePath = '/'.join((self.defSavePath,'Logs', self.descr,saveRootFolder, 'Samples'))
+            if not os.path.exists(saveSamplePath):
+                os.makedirs(saveSamplePath)
+            saveSamplePath = '/'.join((saveSamplePath,title))
+            save_image(catted,'{}.png'.format(saveSamplePath, title), nrow=stepSize)
+        
+        ''' 
+               
+        
         
         return genData
 
