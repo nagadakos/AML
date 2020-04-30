@@ -137,7 +137,7 @@ def main():
     if trainEncoder:
         # Declare your model and other parameters here
         embeddingNetKwargs = dict(device=device, VAE = True)
-        embeddingNet = eNets.BasicVAEEncoder(**embeddingNetKwargs).to(device)
+        #embeddingNet = eNets.BasicVAEEncoder(**embeddingNetKwargs).to(device)
         embeddingNet = eNets.BasicEncoder(**embeddingNetKwargs).to(device)
         #loss = embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
         loss = ''#MSE_KLD_CompoundLoss() # leave this empty to use embedding nets proposed loss or fill in what ever loss needed.
