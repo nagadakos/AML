@@ -16,6 +16,7 @@ def train_classifier(model, indata, device, lossFn, optim,  **kwargs):
     factor = 0
     totalSize, totalLoss = 0, 0
     print("Train Device is {}".format(device))
+    model.train()
     for idx, items in enumerate(indata):
         
         # A. Forward computation input retrieval and handling
@@ -104,6 +105,7 @@ def test_classifier(model, testLoader, device, lossFn, **kwargs):
     acc  = 0
     # Inform Pytorch that keeping track of gradients is not required in
     # testing phase.
+    model.eval()
     with torch.no_grad():
         for idx, (data, label) in enumerate(testLoader):
             data, label = data.to(device), label.to(device)
@@ -174,7 +176,7 @@ def train_autoencoder(model, inData, device, lossFn, optim, **kwargs):
     factor = 0
     totalSize, totalLoss = 0, 0
     print("Train Device is {}".format(device))
-    
+    model.train()
     # e = 0.001     # used for avoiding division by 0.
     totalSize  = 0 # used for averaging error in the end
     totalLoss  = 0 # used for logging the total loss of this epoch
@@ -312,7 +314,7 @@ def test_autoencoder(model, testLoaders, device, lossFn,
     verbose = True if 'verbose' not in kwargs.keys() else kwargs['verbose']
     totalLoss, totalError = 0, 0
     predictions, losses = [], []
-
+    model.eval()
     # Initialize parameters
     # For distance we need smallest distance from all representatives and its a scalar. AS such, we reduce on
     # y.

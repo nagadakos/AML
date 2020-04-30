@@ -12,6 +12,7 @@ from random import shuffle
 import utils
 from indexes import PIDX as pidx
 from indexes import  CIDX as cidx
+import plotter
 import trainer
 # Add this files directory location, so we can include the index definitions
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -253,11 +254,11 @@ class ClassifierFrame(nn.Module):
                 logPath = os.path.join(self.saveHisFolder, self.sep.join((self.defSavePrefix, "log1.txt")))
             # Form plot title and facilate plotting
             title = self.descr + ' '+mode
-            self.plots[pidx.lrCurve] = utils.plot_classifier(filesPath = logPath, title = title, mode = mode)
+            self.plots[pidx.lrCurve] = plotter.plot_classifier(filesPath = logPath, title = title, mode = mode)
         elif source == 'History':
             title = self.descr + mode
-            self.plots[pidx.lrCurve] = utils.plot_classifier(inReps = self.history,title=title, mode=mode)
-            self.plots[pidx.predCurve] = utils.plot_classifier(inReps =self.predHistory, title=title, mode = 'Prediction History')
+            self.plots[pidx.lrCurve] = plotter.plot_classifier(inReps = self.history,title=title, mode=mode)
+            self.plots[pidx.predCurve] = plotter.plot_classifier(inReps =self.predHistory, title=title, mode = 'Prediction History')
 
     #-------------------------------------------------------------------------------------------------------------------------------
 

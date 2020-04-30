@@ -66,7 +66,7 @@ def parse_args():
     parser.add_argument('--lr',    type = float,metavar = 'lr',   default='0.001',help="Learning rate for the oprimizer.")
     parser.add_argument('--m',     type = float,metavar = 'float',default= 0,     help="Momentum for the optimizer, if any.")
     parser.add_argument('--bSize', type = int,  metavar = 'bSize',default=32,     help="Batch size of data loader, in terms of samples. a size of 32 means 32 images for an optimization step.")
-    parser.add_argument('--epochs',type = int,  metavar = 'e',    default=12   ,  help="Number of training epochs. One epoch is to perform an optimization step over every sample, once.")
+    parser.add_argument('--epochs',type = int,  metavar = 'e',    default=8   ,  help="Number of training epochs. One epoch is to perform an optimization step over every sample, once.")
     parser.add_argument('--debug', type = bool,  metavar = 'debug',default=False,  help="Sets debug mode. Training, testing will orceed for only 1 batch and stop.")
     # Parse the input from the console. To access a specific arg-> dim = args.dim
     args = parser.parse_args()
@@ -93,7 +93,7 @@ def main():
         fitArgs = dict(epochs = 1, earlyStopIdx = 1, earlyTestStopIdx = 1)
     else:
         trainLoader, testLoader = load_data(bSize=bSize)
-        fitArgs = dict(epochs = 6, earlyStopIdx = 0, earlyTestStopIdx = 0)
+        fitArgs = dict(epochs = epochs, earlyStopIdx = 0, earlyTestStopIdx = 0)
     # ---|
     
     # ********************
@@ -107,7 +107,7 @@ def main():
         embeddingNetKwargs = dict(device=device)
         embeddingNet = eNets.ANET(**embeddingNetKwargs).to(device)
         loss = nn.CrossEntropyLoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
-        fitArgs['lossFunnction'] = loss
+        fitArgs['lossFunction'] = loss
         # ---|
 
         # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
@@ -118,6 +118,7 @@ def main():
         # Instantiate the framework with the selected architecture, labeling options etc 
         model = ClassifierFrame(embeddingNet, **kwargs)
         optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
+        #optim = optm.Adam(model.encoder.parameters(), lr=lr)
         # ---|
 
         print("######### Initiating Fashion MNIST network training #########\n")
@@ -132,10 +133,10 @@ def main():
     # ********************
     
     # Declare your model and other parameters here
-    embeddingNetKwargs = dict(device=device)
-    embeddingNet = eNets.BasicEncoder(**embeddingNetKwargs).to(device)
-    loss = nn.MSELoss() # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
-    fitArgs['lossFunnction'] = loss
+    embeddingNetKwargs = dict(device=device, VAE = True)
+    embeddingNet = eNets.BasicVAEEncoder(**embeddingNetKwargs).to(device)
+    loss = embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+    fitArgs['lossFunction'] = loss
     # ---|
     
     # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.

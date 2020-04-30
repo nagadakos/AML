@@ -6,6 +6,8 @@ from os import listdir
 import fnmatch
 import re
 import torch.nn as nn
+import torch
+import torch.nn.functional as F
 from dateutil.parser import parse
 import matplotlib.pyplot as plt
 from random import randint
@@ -62,42 +64,6 @@ def show(img):
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
     
-# -------------------------------------------------
-    
-def plot(history, eps = None, train_test=1, figType = 'acc', saveFile = None, title='Test Accuracy vs Epoch'):
-    if figType == 'acc':
-        fig = plt.figure(figsize=(10, 6), dpi=200)
-        plt.title('Plain LSTM accuracy')
-        plt.xlabel('Epochs')
-        if train_test == 0:
-            plt.ylabel('Train Accuracy')
-        else:      
-            plt.ylabel('Test Accuracy')
-
-        xAxis = np.arange(len(history[1]))+1
-        plt.plot(xAxis, history[train_test], marker = 'o')
-        plt.grid()
-        if saveFile is not None:
-            plt.savefig(saveFile)
-        return fig
-
-    if figType == 'lrCurve':
-        fig = plt.figure(figsize=(10, 6), dpi=200)
-        plt.title(title)
-        plt.xlabel('Epochs')
-        if train_test == 0:
-            plt.ylabel('Train Accuracy')
-        else:      
-            plt.ylabel('Test Accuracy')
-        for ind,hist in enumerate(history):
-            xAxis = np.arange(len(hist[train_test]))+1
-            plt.plot(xAxis, hist[train_test], marker = 'o', alpha=0.9, label=f"eps={eps[ind]}")
-        plt.legend()
-        plt.grid()
-        if saveFile is not None:
-            plt.savefig(saveFile)
-        return fig
-
 # -----------------------------------------------------------------------------------------
 
 def get_files_from_path(targetPath, expression, excludePattern = 'dumz'):
@@ -146,122 +112,6 @@ def save_log(filePath, history):
                 else:
                     f.write("-1")
             f.write("\n")
-
-            
-def plot_classifier(filesPath='', title = '', xAxisNumbers = None, labels=[], inReps = [], plot = 'All', mode = 'Learning Curves'):
-    ''' Description: This function will plot Learning or Prediciton curves, as supplied from either txt log files, or a list of
-                     histories, or both. It returns a figure, containg all the curves; one curve for each history provided.
-        Arguments:  filesPath(filePath): A file path to the folder containing the required log txt files.
-                    title(String):       Title to the figure
-                    xAxisNumbers(List):  A list of lalbel strings to be used as x axis annotations.
-                    labels(List):        A list of strings to be used as curve labels.
-                    inReps(List):        A list of model histories in the format train-loss MAE MAPE test-MAE MAPE loss.
-                    plot (selector)      A string command  not yet offering functionality
-                    mode(Selector):      A string command telling the function to plot Learning curves or simple prediction loss.
-        Returns:    fig:     A figure object containg the plots.
-    '''
-    # Argument Handler
-    # ----------------------
-    # This section checks and sanitized input arguments.
-    if not filesPath and  not inReps:
-        print('No input log path or history lists are given to plot_regressor!!')
-        print('Abort plotting.')
-        return -1
-
-    if not isinstance(filesPath, list):
-        files = [filesPath]
-    else:
-        files = filesPath
-    reps = []
-
-    if filesPath:
-        for i,f in enumerate(files):
-            reps.append([[] for i in range(cidx.logSize)])
-            # print(i)
-            # print("Size of reps list: {} {}".format(len(reps),len(reps[i])))
-            with open(f, 'r') as p:
-                # print("i is {}".format(i))
-                for j,l in enumerate(p):
-                    # Ignore last character from line parser as it is just the '/n' char.
-                    report = l[:-2].split(' ')
-                    # print(report)
-                    reps[i][cidx.trainAcc].append(report[cidx.trainAcc])
-                    reps[i][cidx.trainAcc5].append(report[cidx.trainAcc5])
-                    reps[i][cidx.trainLoss].append(report[cidx.trainLoss])
-                    reps[i][cidx.testAcc].append(report[cidx.testAcc])
-                    reps[i][cidx.testAcc5].append(report[cidx.testAcc5])
-                    reps[i][cidx.testLoss].append(report[cidx.testLoss])
-
-    if inReps:
-        for i,r in enumerate(inReps):
-            # reps.append([[] for i in range(ridx.logSize)])
-            reps.append(r)
-    # print("Plots epochs: {}" .format(epochs))
-
-    epochs = len(reps[0][0])
-    if mode == 'Learning Curves':
-        xLabel = 'Epoch'
-    elif mode == 'Prediction History':
-        xLabel = 'Task'
-
-    if xAxisNumbers is None:
-        epchs = np.arange(1, epochs+1)
-    else:
-        epchs = xAxisNumbers
-    # ---|
-
-    fig = plt.figure(figsize=(19.2,10.8))
-    # fig = plt.figure(figsize=(13.68,9.80))
-    plt.title(title)
-    plt.ylabel('Loss')
-    plt.xlabel(xLabel)
-    # Set a color mat to use for random color generation. Each name is a different
-    # gradient group of colors
-    cmaps= ['Pastel1', 'Pastel2', 'Paired', 'Accent',
-                     'Dark2', 'Set1', 'Set2', 'Set3',
-                     'tab10', 'tab20', 'tab20b', 'tab20c']
-    # Create an iterator for colors, for automated plots.
-    cycol = cycle('bgrcmk')
-    ext_list = []
-    test_loss_list = []
-    markerList = list(markers.MarkerStyle.markers.keys())[:-4]
-    for i, rep in enumerate(reps):
-        # print(cmap(i))
-        a = np.asarray(rep, dtype = np.float32)
-        # WHen plotting multiple stuff in one command, keyword arguments go last and apply for all
-        # plots.
-        # If labels are given
-        if not labels:
-            ext = os.path.split(files[i])[1].split('-')
-            ext = ' '.join(('lr', ext[0],'m',ext[1],'wD',ext[2]))
-        else:
-            ext = labels[i]
-            print(ext)
-        # Select color for the plot
-        cSel = [randint(0, len(cmaps)-1), randint(0, len(cmaps)-1)]
-        c1 = plt.get_cmap(cmaps[cSel[0]])
-        # Solid is Train, dashed is test
-        marker = markerList[randint(0, len(markerList))]
-        if plot == 'All' or plot == 'Train':
-            plt.plot(epchs, a[cidx.trainLoss], color = c1(i / float(len(reps))), linestyle =
-                 '-', marker=marker, label = 'Train-'+ext)
-        # plt.plot(epchs, a[ridx.testLoss],  (str(next(cycol))+markerList[rndIdx]+'--'), label = ext)
-        if plot == 'All' or plot == 'Test':
-            linestyle = "-" if "no" in ext else "--"
-            linestyle = ":" if "provided" in ext else linestyle
-            plt.plot(epchs, a[cidx.testLoss], color=  str(next(cycol)), linestyle = linestyle, marker=marker, label = 'Test-'+ext)
-        plt.legend( loc='upper right')
-        ext_list.append(ext)
-        test_loss_list.append(a[cidx.testLoss][-1])
-
-    best_index = np.argmin(np.array(test_loss_list))
-    print("Best test loss is:", str(test_loss_list[best_index]))
-    print("Best parameters are:", ext_list[best_index])
-        # plt.close()
-        # plt.draw()
-        # plt.pause(15)
-
-    return fig
 
 #----------------------------------------------------------------------------------------------
 
@@ -387,11 +237,11 @@ class BCE_KLD_CompoundLoss(nn.Module):
     def __init__(self):
         super(BCE_KLD_CompoundLoss, self).__init__()
 
-    def forward(self, x, target, recon_x, mu, logvar, z, angleLoss=0, weights= None):
+    def forward(self, x,  recon_x, mu, logvar, angleLoss=0, weights= None):
         if weights is not None:
             weights.detach()
-        BCE = F.binary_cross_entropy(recon_x, x, reduction = 'none')
-        BCE = torch.sum(BCE, dim=tuple(range(2, len(BCE.size()))))
+        BCE = F.binary_cross_entropy(recon_x, x, reduction = 'mean')
+        #BCE = torch.sum(BCE, dim=tuple(range(2, len(BCE.size()))))
         KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
         return BCE+KLD+angleLoss
 
