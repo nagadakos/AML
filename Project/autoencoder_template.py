@@ -116,7 +116,7 @@ class AutoEncoderFrame(nn.Module):
         return self.encoder.get_parameters()
     
     #-------------------------------------------------------------------------------------------------------------------------------
-    def generate(self, inExamples= None, fromLatentSpaceSample= False, saveFolder= None, saveTitle='GenSamples',**kwargs):
+    def generate(self, inExamples= None, fromLatentSpaceSample= False, imgsPerRow = None ,saveFolder= None, saveTitle='GenSamples',**kwargs):
         
         if inExamples is not None:
             genData, _ = self.encoder.generate([i.to(self.encoder.device) for i in inExamples], **kwargs)
@@ -139,7 +139,7 @@ class AutoEncoderFrame(nn.Module):
             os.makedirs(saveSampleFile)
         
         
-        imgsPerRow = genData.shape[0]
+        imgsPerRow = genData.shape[0] if imgsPerRow is None else imgsPerRow
         gridImg  = make_grid(printMat, nrow = imgsPerRow)
         saveSamplePath =os.path.join(saveSampleFile,saveTitle)
         save_image(gridImg,'{}.png'.format(saveSamplePath), nrow = imgsPerRow)

@@ -103,7 +103,7 @@ def main():
     # Classify Fruits!
     # ********************
     
-    trainClassifier = True
+    trainClassifier = False
     if trainClassifier:
         print("Top level device is :{}".format(device))
         # Declare your model and other parameters here
@@ -168,7 +168,7 @@ def main():
         fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
         genExamples = [fruitSamples[0:32], fruitSamples[32:64], fruitSamples[64:96]]
         model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples_'+lossLabel)
-        model.generate(saveTitle='GenFruitFromLatentSample_'+lossLabel)
+        model.generate(imgsPerRow= 32,saveTitle='GenFruitFromLatentSample_'+lossLabel)
     
     
     
