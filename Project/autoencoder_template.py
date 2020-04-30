@@ -227,8 +227,8 @@ class AutoEncoderFrame(nn.Module):
     def fit(self, trainLoader, valLoader, optim, device, epochs =10, lossFunction= nn.MSELoss(),  
             recErrorFunc = MSEReconstructionLoss(), validate = True, # basic arguments for fitting and validation enabling
             adaptDurationTrain=False, printInterval=40, earlyStopIdx=0, earlyTestStopIdx=0, classMethod ='distance',   # arguments for train/test stopage control and printouts
-            saveHistory = False, savePlot = False, modelLabel ='',  # arguments for saving
-            w=10, epsilon = 0.03, verbose = True,  # arguments for handing dynamic convergence checking
+            saveHistory = True, savePlot = True, modelLabel ='',  # arguments for saving
+            w=4, epsilon = 0.03, verbose = True,  # arguments for handing dynamic convergence checking
             **kwargs):                                              # various arguments that downstream training and testing function might need.
         """ DESCRIPTION: THis function handle the iterative process of updating a model's parameters to match the data; "fitting". It will handle
                          the train and, if need be, validation on given data. The function is a wrapper for the the train and testing function

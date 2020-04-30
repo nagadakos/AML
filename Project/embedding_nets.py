@@ -752,7 +752,7 @@ class BasicVAEEncoder (nn.Module):
         else:
             return mu
     # ------------------
-    def generate(self, sample=None, bSize=32,  **kwargs):
+    def generate(self, sample=None, bSize=128,  **kwargs):
         """ DESCRIPTION: This function will generate an image based on an input ssample, usually encoded from the forward sample.
                          Sample can be a list of samples, where their average will be used to generate the final image. 
             ARGUMENTS: sample (list of tensors): Hold the samples to be used to generate new fruits from, can be any number

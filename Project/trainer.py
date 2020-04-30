@@ -133,7 +133,7 @@ def test_classifier(model, testLoader, device, lossFn, **kwargs):
     acc = true/len(testLoader.dataset)
     model.history[cidx.testAcc].append(acc)
     model.history[cidx.testAcc5].append(acc) 
-    model.history[cidx.testLoss].append(loss) 
+    model.history[cidx.testLoss].append(loss/idx 
     # Print accuracy report!
     print("Accuracy: {} ({} / {})".format(acc, true,
                                           len(testLoader.dataset)))

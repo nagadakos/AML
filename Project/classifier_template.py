@@ -183,7 +183,7 @@ class ClassifierFrame(nn.Module):
         testerInputArgs = { **dict(lossFn=lossFunction),**testerArgs}
         # ---|
         
-        scheduler = lr_scheduler.ReduceLROnPlateau(optim, verbose=verbose, patience =4, eps=1e-9)
+        scheduler = lr_scheduler.ReduceLROnPlateau(optim, verbose=verbose, patience =2, eps=1e-9)
         # scheduler = lr_scheduler.CyclicLR(optim, 1e-5, 5*1e-4, step_size_up=401)
 
         # Training Loop
