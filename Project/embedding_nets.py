@@ -716,7 +716,7 @@ class BasicVAEEncoder (nn.Module):
         for i in range(len(self.convLayers)):
             x = F.relu(self.convLayers[i](x))
             #print(x.shape)
-        x = x.view(-1, self.linearSize)
+        x = x.reshape(-1, self.linearSize)
         mu = self.mu(x)
         logvar = self.logvar(x)
         return mu, logvar
@@ -765,14 +765,14 @@ class BasicVAEEncoder (nn.Module):
                 for i in range(len(sample)):
                     sample[i] = sample[i].unsqueeze(0)
             # Preassign a tensor to hold the sum of the samples representations, the average of which will be used to generate a new fruit!
-            genData = torch.zeros((sample[0].shape[0], self.latentDim)) 
+            genData = torch.zeros((sample[0].shape[0], self.latentDim)).to(self.device) 
             # Get a representation for all samples, average it and decode this average to get a new synthesized attempt!
             for i in range(len(sample)):
                 genData += self.reparameterize(*self.encode(sample[i]))
             genData = self.decode(genData/len(sample))
             latentSample = 0
         else: #if latent sample is required
-            latentSample = torch.rand((bSize, self.latentDim))
+            latentSample = torch.rand((bSize, self.latentDim)).to(self.device)
             genData = self.decode(latentSample)
             
         return genData, latentSample
