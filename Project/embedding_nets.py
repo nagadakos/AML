@@ -755,7 +755,7 @@ class BasicVAEEncoder (nn.Module):
                                        a) The average represnetation of the provided samples, or if NO sample is given,
                                        b) The decoded output of a random latent space sample
         """
-        self.eval()
+        self.train()
         if sample is not None:
             # Turn input to list, if not already
             if not isinstance(sample, list):
