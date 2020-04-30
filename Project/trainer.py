@@ -79,7 +79,7 @@ def train_classifier(model, indata, device, lossFn, optim,  **kwargs):
     totalSize += len(indata.dataset)
     # --|
     # F. Logging part
-    avgLoss  = totalLoss  / totalSize
+    avgLoss  = totalLoss  / idx
     model.metric = avgLoss
     # Log the current train loss
     model.history[cidx.trainLoss].append(avgLoss)

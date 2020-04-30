@@ -468,7 +468,7 @@ class BasicEncoder (nn.Module):
         self.metric = 0
         self.trainMethod = 'label'
         self.classMethod = 'label'
-        self.propLoss = nn.CrossEntropyLoss()
+        self.propLoss = nn.MSELoss()
     # ======================================================================
     # Section A.0
     # ***********

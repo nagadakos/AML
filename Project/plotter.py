@@ -236,7 +236,7 @@ def plot_autoencoder(filesPath=None, title = '', xAxisNumbers = None, labels=[],
         cSel = [randint(0, len(cmaps)-1), randint(0, len(cmaps)-1)]
         c1 = plt.get_cmap(cmaps[cSel[0]])
         # Solid is Train, dashed is test
-        marker = markerList[randint(0, len(markerList))]
+        marker = markerList[randint(0, len(markerList)-1)]
         if plot == 'All' or plot == 'Train':
             plt.plot(epchs, a[pIdx1], color = c1(i / float(len(reps))), linestyle ='-', marker=marker, label = 'Train-'+ext)
         # plt.plot(epchs, a[eidx.testLoss],  (str(next(cycol))+markerList[rndIdx]+'--'), label = ext)

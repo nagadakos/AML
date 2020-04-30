@@ -138,8 +138,9 @@ def main():
         # Declare your model and other parameters here
         embeddingNetKwargs = dict(device=device, VAE = True)
         embeddingNet = eNets.BasicVAEEncoder(**embeddingNetKwargs).to(device)
+        embeddingNet = eNets.BasicEncoder(**embeddingNetKwargs).to(device)
         #loss = embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
-        loss = MSE_KLD_CompoundLoss() # leave this empty to use embedding nets proposed loss or fill in what ever loss needed.
+        loss = ''#MSE_KLD_CompoundLoss() # leave this empty to use embedding nets proposed loss or fill in what ever loss needed.
         loss = loss if loss != '' else embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
         fitArgs['lossFunction'] = loss
         lossLabel = str(type(loss)).split('.')[-1][:-2] # get the string Description of the loss for logging purposes
@@ -161,7 +162,6 @@ def main():
         print("Parameters: lr:{}, momentum:{}, batch Size:{}, epochs:{}".format(lr,m,bSize,epochs))
 
         #model.print_layers()
-        #model.fit(trainLoader, testLoader, optim, device, epochs = 1, lossFunction = loss, earlyStopIdx = 1, earlyTestStopIdx = 1, saveHistory = True, savePlot= True)
         model.fit(trainLoader, testLoader, optim, device, **fitArgs)
 
         # Generate Data (fruitSamples are already floats normilized to 0-1 range)
