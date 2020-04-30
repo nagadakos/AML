@@ -112,9 +112,7 @@ class ANET(nn.Module):
     trainLoss= 0
     testLoss = 0
     def __init__(self, device = 'cpu', dataSize = [3,100,100],
-                  dims = {'conv1':{'nodes':10,'kSize':3, 'stride':1 }, 'conv2':{'nodes':10,'kSize':3, 'stride':1}, 
-                          'pool1':{'stride':(1,1), 'kSize':(2,1)}, 'pool2':{'stride':(1,1), 'kSize':(2,1)},
-                          'linear1':{'out':50}, 'linear2':{'out':120}},
+                  dims = {'nodes':[64,48,32,24,16,8], 'kSizes':[5,5,3,3,3,3], 'strides':[1,1,2,2,2,2], 'linear1':[200,120]},
                  **kwargs):
         """ DESCRIPTIONS: Used to initialzie the model. This is the workhorse. pass all required arguments in the init
                           as the example here, hwere the device (cpu or gpu), the datasize and the dims for the various layers
@@ -138,21 +136,29 @@ class ANET(nn.Module):
         # ********
         # Layer Dimensions computation
         # Compute  layer dims after 1nd conv layer, automatically.
-        
+        # Layer Dimensions computation
+        # Compute  layer dims after 1nd conv layer, automatically.
         dataChannels1 = '2d' # 3d for 3 dimensional data or 2d. Used to correctly comptue the output dimensions of conv and pool layers!
-        h1, w1 = utils.comp_conv_dimensions(dataChannels1, dataSize[1],dataSize[2], dims['conv1']['kSize'], stride = dims['conv1']['stride'])
-        print("Dims conv1 for linear layaer: {} {}".format(h1,w1))
-        # Compute dims after 1nd max layer
-        h2, w2 = utils.comp_pool_dimensions(dataChannels1, h1, w1, dims['pool1']['kSize'], stride = dims['pool1']['stride'])
-        print("Dims pool1 for linear layaer: {} {}".format(h2,w2))
-        # Compute dims after 2nd  layer
-        h3, w3 = utils.comp_conv_dimensions(dataChannels1, h2,w2, dims['conv2']['kSize'], stride = dims['conv2']['stride'])
-        print("Dims conv2 for linear layaer: {} {}".format(h3,w3))
-        # Compute dims after 2nd max layer
-        h4, w4 = utils.comp_pool_dimensions(dataChannels1, h3,w3, dims['pool2']['kSize'], stride = dims['pool2']['stride'])
-        print("Dims pool2 for linear layaer: {} {}".format(h4,w4))
-        self.linearSize = dims['conv2']['nodes'] * h4*w4
-        print("Dims for linear layaer: " + str(self.linearSize))
+        h, w = [], []
+        h.append(dataSize[1])
+        w.append(dataSize[2])
+        self.numOfConvLayers = len(dims['nodes'])
+        for i in range(1,self.numOfConvLayers+1):
+            hi, wi = utils.comp_conv_dimensions(dataChannels1, h[-1], w[-1], dims['kSizes'][i-1], stride = dims['strides'][i-1])
+            
+            print("Dims conv{} for  layaer: {} {}".format(i,hi,wi))
+            h.append(hi)
+            w.append(wi)
+            if i ==2 or i ==4 or i ==6:  # add a pool layer every 2 layers
+                hi, wi = utils.comp_pool_dimensions(dataChannels1, h[-1], w[-1], 3, stride = 1)
+                print("Dims pool{} for  layaer: {} {}".format(i,hi,wi))
+                h.append(hi)
+                w.append(wi)
+                
+        self.h, self.w = h,w 
+        self.linearSize1 = dims['nodes'][-1] * h[-1]*w[-1]
+        print("Dims for linear layaer: " + str(self.linearSize1))
+        self.h, self.w = h,w
         # ---|
         
     # Section A.1
@@ -161,16 +167,27 @@ class ANET(nn.Module):
         # Similar to Fischer prize building blocks!
         
         # Layers Declaration
-        self.conv1 = nn.Conv2d(dataSize[0], dims['conv1']['nodes'], kernel_size=dims['conv1']['kSize'], stride = dims['conv1']['stride'])
-        self.conv2 = nn.Conv2d(dims['conv1']['nodes'], dims['conv2']['nodes'], kernel_size=dims['conv2']['kSize'], stride = dims['conv2']['stride'])
-        self.drop = nn.Dropout2d()
-        self.mPool1 = torch.nn.MaxPool2d(dims['pool1']['kSize'], stride = dims['pool1']['stride'])
-        self.mPool2 = torch.nn.MaxPool2d(dims['pool2']['kSize'], stride = dims['pool2']['stride']) 
-        self.fc1 = nn.Linear(self.linearSize, dims['linear1']['out'])
-        self.fc2 = nn.Linear(dims['linear1']['out'], dims['linear2']['out'])
+        self.layers  = [nn.Conv2d(dataSize[0], dims['nodes'][0], kernel_size=dims['kSizes'][0], stride = dims['strides'][0])]
+        offset = 0
+        for i in range(1, 6):
+            if i < 6:
+                self.layers += [nn.Conv2d(dims['nodes'][i-1], dims['nodes'][i], kernel_size=dims['kSizes'][i], stride = dims['strides'][i])]
+                self.layers += [nn.ReLU()]
+                if i == 1 or i ==3 or i ==5:
+                    self.layers += [nn.MaxPool2d(3,stride=1)]
+                elif i ==2 or i == 6:
+                    self.layers += [nn.Dropout2d()]
+        self.layers += [nn.Flatten()]
+        self.layers += [nn.Linear(self.linearSize1, dims['linear1'][0])]
+        self.layers += [nn.ReLU()]
+        self.layers += [nn.Linear(dims['linear1'][0], dims['linear1'][1])]
+        self.layers += [nn.ReLU()]
+        
+        self.layers = nn.ModuleList(self.layers)
         
         # Device handling CPU or GPU 
         self.device = device
+          
     # Init End
     # --------|
     
@@ -179,16 +196,8 @@ class ANET(nn.Module):
     # Set the aove defined building blocks as an
     # organized, meaningful architecture here.
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(self.mPool1(x))
-        x = self.conv2(x)
-        x = F.relu(self.mPool2(x))
-        x = F.dropout(x, training=self.training)
-        #print(x.shape)
-        x = x.view(-1, self.linearSize)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        x = F.log_softmax(x, dim=1)        
+        for i, layer in enumerate(self.layers):
+            x = layer(x)
         return x
     
     # ------------------

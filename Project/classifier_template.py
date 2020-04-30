@@ -54,7 +54,7 @@ class ClassifierFrame(nn.Module):
         # *******************************************************
         # Declare Name here. Used for saving and annotation.
         self.descr =  encoder.descr
-        print(self.descr)
+        print(self.descr, self.targetApp)
         # ---|
 
         # Declare the layers here
@@ -75,6 +75,7 @@ class ClassifierFrame(nn.Module):
         self.history = [[] for i in range(cidx.logSize)]
         self.predHistory = [[] for i in range(cidx.predLogSize)]
         # ---|
+        
         # Default File Saving parameter setting.
         self.sep = '-'         # seperator for itemes in save file labels: i.e label1-secondLabel.txt if sep = '-'   
         self.rootSaveFolder    = os.path.join(dir_path, self.targetApp, self.descr)
@@ -155,7 +156,7 @@ class ClassifierFrame(nn.Module):
 
     def fit(self, trainLoader, valLoader, optim, device, epochs =10, lossFunction= nn.CrossEntropyLoss(), validate = True, # basic arguments for fitting and validation enabling
             adaptDurationTrain=False, printInterval=40, earlyStopIdx=0, earlyTestStopIdx=0, classMethod ='distance',   # arguments for train/test stopage control and printouts
-            saveHistory = False, savePlot = False, modelLabel ='',  # arguments for saving
+            saveHistory = True, savePlot = True, modelLabel ='',  # arguments for saving
             w=10, epsilon = 0.03, verbose = True,  # arguments for handing dynamic convergence checking
             **kwargs):                                              # various arguments that downstream training and testing function might need.
         """ DESCRIPTION: THis function handle the iterative process of updating a model's parameters to match the data; "fitting". It will handle
