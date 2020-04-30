@@ -120,8 +120,8 @@ def main():
 
         # Instantiate the framework with the selected architecture, labeling options etc 
         model = ClassifierFrame(embeddingNet, **kwargs)
-        optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
-        #optim = optm.Adam(model.encoder.parameters(), lr=lr)
+        #optim = optm.SGD(model.encoder.parameters(), lr=lr, momentum=m)
+        optim = optm.Adam(model.encoder.parameters(), lr=lr)
         # ---|
 
         print("######### Initiating {} Network training #########\n".format(model.descr))

@@ -175,13 +175,13 @@ class ANET(nn.Module):
                 self.layers += [nn.ReLU()]
                 if i == 1 or i ==3 or i ==5:
                     self.layers += [nn.MaxPool2d(3,stride=1)]
-                elif i ==2 or i == 6:
+                elif i ==2 :
                     self.layers += [nn.Dropout2d()]
         self.layers += [nn.Flatten()]
         self.layers += [nn.Linear(self.linearSize1, dims['linear1'][0])]
         self.layers += [nn.ReLU()]
         self.layers += [nn.Linear(dims['linear1'][0], dims['linear1'][1])]
-        self.layers += [nn.ReLU()]
+        self.layers += [nn.LogSoftmax()]
         
         self.layers = nn.ModuleList(self.layers)
         
