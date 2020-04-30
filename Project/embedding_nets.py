@@ -624,7 +624,7 @@ class BasicVAEEncoder (nn.Module):
         super(BasicVAEEncoder, self).__init__()
         
         # Boiler plate code. Any init should declare the following
-        self.descr = 'Basic_Encoder'
+        self.descr = 'Basic_VAE_Encoder'
         self.lr_policy = 'plateau'
         self.metric = 0
         self.trainMethod = 'label'
@@ -755,7 +755,7 @@ class BasicVAEEncoder (nn.Module):
                                        a) The average represnetation of the provided samples, or if NO sample is given,
                                        b) The decoded output of a random latent space sample
         """
-        self.train()
+        self.eval()
         if sample is not None:
             # Turn input to list, if not already
             if not isinstance(sample, list):
