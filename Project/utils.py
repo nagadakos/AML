@@ -252,6 +252,31 @@ class BCE_KLD_CompoundLoss(nn.Module):
     def get_KLD(mu, logvar):
         KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
         return KLD
+# --------------------------------------------------------------------------------------------------------------------
+class MSE_KLD_CompoundLoss(nn.Module):
+    """ Description: see Appendix B from VAE paper: Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+                     TODO: angle loss is an input currently. Has to become a normal loss. Talk to Aswin about
+                     it.
+    """
+    def __init__(self):
+        super(MSE_KLD_CompoundLoss, self).__init__()
+
+    def forward(self, x,  recon_x, mu, logvar, angleLoss=0, weights= None):
+        if weights is not None:
+            weights.detach()
+        MSE = F.mse_loss(recon_x, x, reduction = 'mean')
+        #BCE = torch.sum(BCE, dim=tuple(range(2, len(BCE.size()))))
+        KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        return MSE+KLD+angleLoss
+
+    def get_MSE(recon_x,x, size_average = False):
+        MSE = F.mse_loss(recon_x, x)
+        return MSE
+
+    def get_KLD(mu, logvar):
+        KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+        return KLD
+
 # ==================================================================================================
 # REGRESSION LOSSES
 # ==================================================================================================

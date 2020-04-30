@@ -13,6 +13,7 @@ from frut_loader import  Fruits, load_dataset
 from plotter import display_tensor_image
 import os
 import argparse
+from utils import MSE_KLD_CompoundLoss
 dir_path   = os.path.dirname(os.path.realpath(__file__))
 tools_path = os.path.join(dir_path, "../../Code/")
 sys.path.insert(0, tools_path)
@@ -135,8 +136,12 @@ def main():
     # Declare your model and other parameters here
     embeddingNetKwargs = dict(device=device, VAE = True)
     embeddingNet = eNets.BasicVAEEncoder(**embeddingNetKwargs).to(device)
-    loss = embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+    #loss = embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
+    loss = MSE_KLD_CompoundLoss() # leave this empty to use embedding nets proposed loss or fill in what ever loss needed.
+    loss = loss if loss != '' else embeddingNet.propLoss # or use embeddingNet.propLoss (which should bedeclared at your model; its the loss function you want it by default to use)
     fitArgs['lossFunction'] = loss
+    lossLabel = str(type(loss)).split('.')[-1][:-2] # get the string Description of the loss for logging purposes
+    print(loss)
     # ---|
     
     # Bundle up all the stuff into dicts to pass them to the template, this are mostly for labellng purposes: ie how to label the saved model, its plots and logs.
@@ -160,8 +165,8 @@ def main():
     # Generate Data (fruitSamples are already floats normilized to 0-1 range)
     fruitSamples = load_data(dataPackagePath = os.path.join(dir_path, 'Data','fruit_samples.npz'),  isFruitSamples = True)
     genExamples = [fruitSamples[0:32], fruitSamples[32:64], fruitSamples[64:96]]
-    model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples')
-    model.generate(saveTitle='GenFruitFromLatentSample')
+    model.generate(inExamples=genExamples, saveTitle='GenFruitFromSamples_'+lossLabel)
+    model.generate(saveTitle='GenFruitFromLatentSample_'+lossLabel)
     
     
     
